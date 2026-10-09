@@ -1,0 +1,10 @@
+{
+  "description": "游戏大厅 - 微信小游戏工程(第一期)",
+  "miniprogramRoot": "",
+  "compileType": "game",
+  "appid": "touristappid",
+  "projectname": "game-hall",
+  "setting": { "urlCheck": false, "es6": true, "postcss": true, "minified": false },
+  "libVersion": "2.25.0",
+  "condition": {}
+}

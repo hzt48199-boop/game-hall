@@ -1,0 +1,6 @@
+{ "name": "game-hall", "version": "1.0.0", "private": true,
+  "scripts": {
+    "install:server": "cd server && npm install",
+    "build": "node tools/build.js", "audio": "node tools/genaudio.js",
+    "test": "node --test tests/", "test:bots": "node tests/bots.js", "test:ui": "node tests/ui-smoke.js",
+    "start:server": "node server/server.js", "start:web": "node web/serve.js 8080" } }

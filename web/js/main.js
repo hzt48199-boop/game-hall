@@ -23,5 +23,7 @@
     try { if (GH.Sound) { var a = new Audio(); a.src = GH.Sound.base + 'click.wav'; a.volume = 0; var p = a.play(); if (p && p.catch) p.catch(function () { }); GH.Sound.unlock(); } } catch (e) { }
   }
   ['touchend', 'click'].forEach(function (n) { document.addEventListener(n, unlockAudio, { passive: true }); });
+  // 切到后台/锁屏时暂停声音,回来自动恢复(iOS 会挂起 AudioContext)
+  document.addEventListener('visibilitychange', function () { var S = GH.Sound; if (!S || !S.ac) return; try { if (document.hidden) S.ac.suspend(); else S.ac.resume(); } catch (e) { } });
   window.__app = app;
 })();

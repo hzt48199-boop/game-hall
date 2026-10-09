@@ -1,5 +1,5 @@
 const test = require('node:test'), assert = require('node:assert'), fs = require('fs'), path = require('path');
-const need = ['click', 'place', 'capture', 'wait', 'start', 'end', 'win', 'lose', 'music_chinese', 'music_calm', 'music_lively', 'deal', 'cardplay', 'bomb', 'rocket', 'pass', 'bid', 'tiledraw', 'tilediscard', 'pong', 'kong', 'chi', 'hu', 'chips', 'fold', 'compare', 'look'];
+const need = ['click', 'place', 'capture', 'wait', 'start', 'end', 'win', 'lose', 'music_chinese', 'music_calm', 'music_lively', 'deal', 'cardplay', 'bomb', 'rocket', 'pass', 'bid', 'tiledraw', 'tilediscard', 'pong', 'kong', 'chi', 'hu', 'chips', 'fold', 'compare', 'look', 'shuffle', 'urge', 'laugh', 'sigh'];
 for (const dir of ['web/audio', 'wechat-minigame/audio']) test('音频资源齐全且是合法 WAV: ' + dir, () => {
   for (const n of need) {
     const b = fs.readFileSync(path.join(__dirname, '..', dir, n + '.wav'));

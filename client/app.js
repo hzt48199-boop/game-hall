@@ -45,7 +45,7 @@
   P.gameInfo = function (id) { return GAMES.filter(function (g) { return g.id === id; })[0]; };
   P.setScene = function (scene) {
     this.scene = scene; this.dirty = true;
-    var track = (this.g && scene === 'game') ? ({ gomoku: 'calm', doudizhu: 'lively', zhajinhua: 'lively' }[this.g.game] || 'chinese') : 'calm';
+    var track = (this.g && scene === 'game') ? ({ gomoku: 'calm', doudizhu: 'lively', zhajinhua: 'lively', mahjong: 'lively' }[this.g.game] || 'chinese') : 'calm';
     Sound.setMusic(track);
     if (scene === 'matching' || scene === 'waiting' || (scene === 'join')) this.net.start();
   };
@@ -96,7 +96,15 @@
       var opp = g.players && g.players[2 - g.seat];
       want = !!(g.status === 'waiting' || (opp && !opp.online) || (g.setup && g.setup.done && g.state.phase === 'setup'));
     }
-    Sound.setWait(want);
+    Sound.setWait(want); this.updateUrge();
+  };
+  /* 催促: 牌类游戏轮到我且超过 10 秒没操作,每 6 秒响一次"嘟嘟嘟" */
+  P.updateUrge = function () {
+    var g = this.g, now = Date.now();
+    if (this.scene !== 'game' || !g || !g.vs || g.vs.over || !g.seat || !(g.game === 'doudizhu' || g.game === 'mahjong' || g.game === 'zhajinhua') || g.vs.turn !== g.seat) { this._urgeKey = null; return; }
+    var key = g.vs.turn + ':' + (g.vs.seq || 0);
+    if (this._urgeKey !== key) { this._urgeKey = key; this._urgeAt = now + 10000; return; }
+    if (now >= this._urgeAt) { this._urgeAt = now + 6000; Sound.sfx('urge'); }
   };
 
   /* ---------- 大厅 / 模式 ---------- */
@@ -401,7 +409,7 @@
       if (vs.over) { g.lastBy = {}; var q = pl; for (var j = q.length - 1; j >= 0; j--) { var e2 = q[j]; if (!g.lastBy[e2.seat]) g.lastBy[e2.seat] = e2.pass ? { pass: true } : { cards: e2.cards, type: e2.type }; if (e2.lead) break; } }
       if (g.sel) { var mine = vs.hands[g.seat] || []; Object.keys(g.sel).forEach(function (k) { if (mine.indexOf(+k) < 0) delete g.sel[k]; }); }
     }
-    if (vs.seq !== prevSeq) { if (!first || prevSeq !== -1) { var ev = vs.event; if (ev && SOUND_OF[ev.t]) Sound.sfx(SOUND_OF[ev.t]); } else Sound.sfx('deal'); g.seq = vs.seq; }
+    if (vs.seq !== prevSeq) { if (!first || prevSeq !== -1) { var ev = vs.event; if (ev && SOUND_OF[ev.t]) { if (ev.t === 'redeal') Sound.sfx('shuffle'); Sound.sfx(SOUND_OF[ev.t]); } } else { Sound.sfx('shuffle'); setTimeout(function () { Sound.sfx('deal'); }, 1100); } g.seq = vs.seq; }
     if (vs.over) g.pick = false;
     if (vs.turn !== g.lastTurn) { g.lastTurn = vs.turn; g.pick = false; g.selTile = null; if (vs.turn !== g.seat) g.sel = null; }
     if (vs.over) this.onOverMulti(g);
@@ -413,6 +421,7 @@
     if (!g.beansDone) { g.beansDone = true; g.delta = delta; this.beans = Math.max(0, this.beans + delta); if (this.beans < 200) { this.beans = 1000; g.relief = true; } this.pf.storage.set('gh_beans', String(this.beans)); }
     var won = vs.winners && vs.winners.indexOf(g.seat) >= 0;
     setTimeout(function () { Sound.sfx(won ? 'win' : (vs.winners && vs.winners.length ? 'lose' : 'end')); }, 650);
+    if (won) setTimeout(function () { Sound.sfx('laugh'); }, 1300); else if (vs.winners && vs.winners.length) setTimeout(function () { Sound.sfx('sigh'); }, 1500);
   };
   P.sendMulti = function (mv) {
     var g = this.g; if (!g || !g.vs || g.vs.over) return;

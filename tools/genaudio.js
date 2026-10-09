@@ -191,3 +191,33 @@ sfx2('chips.wav', 0.45, b => { for (let i = 0; i < 4; i++) { const t = i * 0.06;
 sfx2('fold.wav', 0.5, b => { noiseBurst(b, SR2, 0, 0.18, 0.5, 14, 0.15); tone(b, SR2, 0, 0.35, 300, 0.4, { harm: [1, 0.3], dec: 10, atk: 0.004, glide: -0.4 }); tone(b, SR2, 0.12, 0.3, 200, 0.35, { harm: [1], dec: 12, atk: 0.004, glide: -0.3 }); }); // 弃牌: 牌被扣下的沉闷滑动
 sfx2('compare.wav', 0.9, b => { [0, 0.16].forEach((t, i) => { noiseBurst(b, SR2, t, 0.04, 0.9, 90, 0.5); tone(b, SR2, t, 0.3, i ? 520 : 390, 0.7, { harm: [1, 0.5, 0.25], dec: 9, atk: 0.001 }); }); tone(b, SR2, 0.34, 0.5, 780, 0.45, { harm: [1, 0.4], dec: 5, atk: 0.003 }); tone(b, SR2, 0.34, 0.5, 1170, 0.2, { dec: 6 }); }); // 比牌: 两下碰牌 + 亮音
 sfx2('look.wav', 0.3, b => { noiseBurst(b, SR2, 0, 0.06, 0.45, 60, 0.35); noiseBurst(b, SR2, 0.09, 0.05, 0.6, 90, 0.6); tone(b, SR2, 0.09, 0.15, 700, 0.25, { harm: [1], dec: 30, atk: 0.001, glide: 0.3 }); }); // 看牌: 掀牌的"沙—啪"
+
+/* ---- 第四期新增: 洗牌 / 催促 / 笑声"哈哈" / 叹气"唉"(共振峰合成,16kHz;追加在末尾,不改变既有音频随机序列) ---- */
+function formantVoice(b, sr, t0, dur, f0Fn, formFn, vol, breath) { // 声门脉冲串 → 并联二阶带通共振峰
+  const s0 = Math.floor(t0 * sr), n = Math.floor(dur * sr);
+  const st = [0, 0, 0].map(() => [0, 0]); let ph = 0;
+  for (let i = 0; i < n && s0 + i < b.length; i++) {
+    const t = i / n, f0 = f0Fn(t); ph += f0 / sr; if (ph >= 1) ph -= 1;
+    const glot = (ph < 0.4 ? Math.sin(Math.PI * ph / 0.4) : 0) - 0.3 + (breath || 0) * rand() * 0.5; // 近似声门波 + 气声
+    const F = formFn(t); let y = 0;
+    for (let k = 0; k < 3; k++) {
+      const fc = F[k][0], bw = F[k][1], r = Math.exp(-Math.PI * bw / sr), c = 2 * r * Math.cos(2 * Math.PI * fc / sr);
+      const o = glot * (1 - r) + c * st[k][0] - r * r * st[k][1]; st[k][1] = st[k][0]; st[k][0] = o; y += o * F[k][2];
+    }
+    const env = Math.min(1, i / (0.02 * sr)) * Math.min(1, (n - i) / (0.06 * sr));
+    b[s0 + i] += y * env * vol;
+  }
+}
+sfx2('shuffle.wav', 1.3, b => { // 洗牌: 两叠牌哗啦交错 + 收拢"啪"
+  for (let i = 0; i < 46; i++) { const t = i * 0.020 + rand() * 0.006, v = 0.35 + 0.4 * Math.sin(Math.PI * i / 46); noiseBurst(b, SR2, t, 0.02, v, 160, 0.55 + 0.3 * rand()); }
+  noiseBurst(b, SR2, 1.05, 0.05, 0.9, 80, 0.5); tone(b, SR2, 1.05, 0.2, 200, 0.5, { harm: [1, 0.4], dec: 25, atk: 0.001, glide: -0.3 });
+});
+sfx2('urge.wav', 0.9, b => { [0, 0.3, 0.6].forEach(t => { tone(b, SR2, t, 0.14, 1250, 0.55, { harm: [1, 0.35], dec: 22, atk: 0.002 }); tone(b, SR2, t, 0.1, 1900, 0.18, { dec: 30 }); }); }); // 催促: 三声急促"嘟嘟嘟"
+sfx2('laugh.wav', 1.5, b => { // 哈哈哈: 4 声递减、音高下落的"啊"
+  const A = [[800, 90, 1], [1250, 110, 0.6], [2600, 160, 0.25]];
+  [0, 0.3, 0.58, 0.84].forEach((t, i) => formantVoice(b, SR2, t, 0.2, u => (300 - i * 12) * (1 - 0.12 * u) , () => A, 0.7 - i * 0.1, 1.2));
+  [0, 0.3, 0.58, 0.84].forEach((t, i) => noiseBurst(b, SR2, t, 0.05, 0.12 - i * 0.02, 60, 0.7));
+});
+sfx2('sigh.wav', 1.4, b => { // 唉: 由"啊"滑向"咿"的下落叹息 + 气声
+  formantVoice(b, SR2, 0, 1.2, u => 250 - 80 * u, u => [[800 - 480 * u, 100, 1], [1200 + 900 * u, 120, 0.6], [2600 + 100 * u, 170, 0.25]], 0.75, 2.2);
+});

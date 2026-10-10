@@ -96,7 +96,7 @@
       var s = g.vs, me = g.seat, W = app.W, names = g.names || {}, self = this, order = [(me + 1) % 4 + 1, (me + 2) % 4 + 1, (me + 3) % 4 + 1, me];
       // 实际顺序: 上家(左) 对家 下家(右) 我 → 自上而下排列为 下家、对家、上家、我 以便阅读
       order = [me % 4 + 1, (me + 1) % 4 + 1, (me + 2) % 4 + 1];
-      var y = rect.y + 2, bh = 74, tw = 15, th = 21;
+      var wide = W >= 700, y = rect.y + 2, bh = wide ? 84 : 74, tw = wide ? 20 : 15, th = wide ? 28 : 21;
       order.forEach(function (p) {
         var act = s.turn === p && !s.over;
         rrect(ctx, 6, y, W - 12, bh, 8); ctx.fillStyle = act ? 'rgba(255,214,0,0.18)' : 'rgba(0,0,0,0.22)'; ctx.fill(); if (act) { ctx.strokeStyle = '#ffd600'; ctx.lineWidth = 2; ctx.stroke(); }
@@ -121,7 +121,7 @@
       ds2.forEach(function (t, i) { drawTile(ctx, 14 + (i % per2) * (tw + 1), y + 20 + Math.floor(i / per2) * (th - 2), tw, th - 3, t, { hl: s.lastDiscard && s.lastDiscard.seat === me && i === ds2.length - 1 && !s.over }); });
       y += 68;
       // 手牌
-      var hand = s.hands[me] || [], n = hand.length, melds = s.melds[me], hw = Math.min(27, (W - 12 - 4) / 15), hh2 = hw * 1.42, hy = y + 30;
+      var hand = s.hands[me] || [], n = hand.length, melds = s.melds[me], hw = Math.min(W >= 700 ? 42 : 27, (W - 12 - 4) / 15), hh2 = hw * 1.42, hy = y + 30;
       var meldW = 0; melds.forEach(function (m) { meldW += m.tiles.length * (hw * 0.62 + 1) + 6; });
       var gap = s.drawn >= 0 && s.turn === me && s.phase === 'discard' ? 8 : 0, total = n * (hw + 1) + gap + meldW, sx = Math.max(4, (W - total) / 2);
       var cx2 = sx; melds.forEach(function (m) { cx2 += drawMeld(ctx, m, cx2, hy + hh2 * 0.3, hw * 0.62, hh2 * 0.7); });
@@ -208,7 +208,7 @@
       var s = g.vs, me = g.seat, W = app.W, names = g.names || {}, n = s.n, i, others = [];
       for (i = 1; i < n; i++) others.push(((me - 1 + i) % n) + 1);
       text(ctx, 'For entertainment only, virtual chips, no cash value, not redeemable', W / 2, rect.y + 8, 11, '#ffcc80', true, 'center', W - 12);
-      var cols = Math.min(3, others.length), cw = (W - 16 - (cols - 1) * 6) / cols, ch = 80, y0 = rect.y + 20, botY = rect.y + rect.h;
+      var cols = Math.min(3, others.length), cw = (W - 16 - (cols - 1) * 6) / cols, ch = 84, y0 = rect.y + 20, botY = rect.y + rect.h;
       var chh = 76, cw2 = 54, hy = botY - 98 - 8 - chh;
       others.forEach(function (q, idx) {
         var col = idx % cols, row = Math.floor(idx / cols), x = 8 + col * (cw + 6), y = y0 + row * (ch + 5);
@@ -224,8 +224,8 @@
         if (s.bets[q] > 0 && !s.over) st = (st ? st + ' · ' : '') + T('Bet {0}', s.bets[q]);
         text(ctx, st, x + cw / 2, y + 39, 11, out ? '#b0bec5' : '#cfe8d5', false, 'center', cw - 6);
         var hs = s.hands[q], w2 = 22, h2 = 30, sx = x + (cw - (2 * w2 + 4)) / 2;
-        if (!out || (hs && s.over)) for (var c = 0; c < 2; c++) drawPoker(ctx, sx + c * (w2 + 4), y + 44, w2, h2, hs ? hs[c] : null, { back: !hs, dim: out });
-        if (hs && s.hnames[q]) text(ctx, T(s.hnames[q]), x + cw / 2, y + ch - 5, 9, '#ffd54f', true, 'center', cw - 4);
+        if (!out || (hs && s.over)) for (var c = 0; c < 2; c++) drawPoker(ctx, sx + c * (w2 + 4), y + 46, w2, h2, hs ? hs[c] : null, { back: !hs, dim: out });
+        if (hs && s.hnames[q]) text(ctx, T(s.hnames[q]), x + cw / 2, y + ch - 4, 9, '#ffd54f', true, 'center', cw - 4);
         if (s.over && s.scores[q] !== 0) text(ctx, (s.scores[q] > 0 ? '+' : '') + s.scores[q], x + cw - 24, y + 56, 13, s.scores[q] > 0 ? '#ffd54f' : '#ef9a9a', true);
       });
       var rows = Math.ceil(others.length / cols), cy = y0 + rows * (ch + 5) + 2;

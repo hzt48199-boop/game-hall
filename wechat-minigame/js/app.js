@@ -317,6 +317,16 @@
     this.btn(px + 30, py + 202, pw - 60, 44, T('Claim +{0} chips', amt), function () { Ads.finish(true); }, { color: '#2e7d32', size: 17, disabled: !done });
     B.text(c, T('For entertainment only - virtual chips, no cash value, not redeemable'), W / 2, py + 274, 10, '#6f8577', false, 'center', pw - 20);
   };
+  P.wrapText = function (str, x, y, size, color, maxW) { // centered word/char wrap
+    var c = this.ctx; str = T(str); c.font = size + 'px ' + FONT; var lines = [], cur = '', words = str.split(/(?<=[\s,，。;；])|(?=[\u3000-\u9fff])/);
+    words.forEach(function (w) { if (cur && c.measureText(cur + w).width > maxW) { lines.push(cur); cur = w; } else cur += w; });
+    if (cur) lines.push(cur);
+    for (var i = 0; i < lines.length; i++) B.text(c, lines[i].trim(), x, y + i * (size + 5), size, color, false, 'center');
+  };
+  P.fitText = function (str, x, y, size, color, bold, maxW) { // shrink the font (down to 11px) before squeezing
+    var c = this.ctx; str = T(str); while (size > 11) { c.font = (bold ? 'bold ' : '') + size + 'px ' + FONT; if (c.measureText(str).width <= maxW) break; size--; }
+    B.text(c, str, x, y, size, color, bold, 'center', maxW);
+  };
   P.draw_mode = function () {
     var c = this.ctx, W = this.W, g = this.cur, self = this; this.header(g.name, function () { self.setScene('lobby'); });
     var bw = Math.min(W - 40, 340), x = (W - bw) / 2, y = 120, bh = 56;
@@ -324,7 +334,7 @@
     ['Create Friend Room', '#1565c0', function () { self.createRoom(); }],
     ['Join Room', '#6a1b9a', function () { self.joinCode = ''; self.setScene('join'); }],
     ['Quick Match', '#ef6c00', function () { self.quickMatch(); }]].forEach(function (b) { self.btn(x, y, bw, bh, b[0], b[2], { color: b[1], size: 22 }); y += bh + 14; });
-    B.text(c, g.multi ? 'Friend rooms: empty seats are filled by the computer; Quick Match falls back to the computer after 8 s' : 'If no human opponent is found within 8 s, Quick Match starts a game against the computer', W / 2, y + 8, 12, '#9cc3a8');
+    this.wrapText(g.multi ? 'Friend rooms: empty seats are filled by the computer; Quick Match falls back to the computer after 8 s' : 'If no human opponent is found within 8 s, Quick Match starts a game against the computer', W / 2, y + 8, 12, '#9cc3a8', W - 40);
   };
   P.draw_diff = function () {
     var c = this.ctx, W = this.W, self = this, g = this.cur; this.header(T(g.name) + T(' · vs Computer'), function () { self.setScene('mode'); });
@@ -337,8 +347,8 @@
     if (g.zjh || g.holdem) {
       y += 90; B.text(c, 'Table size (you + computers)', W / 2, y - 14, 16, '#cfe8d5');
       [2, 3, 4, 5, 6].forEach(function (k, i) { var on = self.diff.n === k; self.btn(x + i * (bw / 5), y, bw / 5 - 6, 40, T('{0} players', k), function () { self.diff.n = k; }, { color: on ? '#ff8f00' : '#546e7a', stroke: on ? '#fff' : null, size: 16 }); });
-      B.text(c, g.holdem ? 'Blinds 10/20, 1000 chips each. For entertainment only, virtual chips, no cash value, not redeemable' : 'Each hand: 1000 beans buy-in, ante 10. For entertainment only, virtual chips, no cash value, not redeemable', W / 2, y + 62, 11, '#ffcc80', false, 'center', W - 16);
-      this.btn(x, y + 86, bw, 56, 'Start Game', function () { self.startLocalMulti(g.id, self.diff.level, self.diff.n); }, { color: '#2e7d32', size: 22 }); return;
+      this.wrapText(g.holdem ? 'Blinds 10/20, 1000 chips each. For entertainment only, virtual chips, no cash value, not redeemable' : 'Each hand: 1000 beans buy-in, ante 10. For entertainment only, virtual chips, no cash value, not redeemable', W / 2, y + 58, 11, '#ffcc80', W - 28);
+      this.btn(x, y + 98, bw, 56, 'Start Game', function () { self.startLocalMulti(g.id, self.diff.level, self.diff.n); }, { color: '#2e7d32', size: 22 }); return;
     }
     if (g.multi) { B.text(c, g.id === 'doudizhu' ? 'You and two computers (bidding decides the landlord)' : 'You and three computers', W / 2, y + 74, 14, '#9cc3a8'); this.btn(x, y + 100, bw, 56, 'Start Game', function () { self.startLocal(g.id, self.diff.level, 1); }, { color: '#2e7d32', size: 22 }); return; }
     y += 90; B.text(c, 'You play', W / 2, y - 14, 16, '#cfe8d5');
@@ -550,8 +560,8 @@
     B[g.game].draw(c, this.boardRect(), dg);
     // 底部状态
     var y = H - 112; c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, y, W, 112);
-    var line = this.statusText(); B.text(c, line, W / 2, y + 20, 17, '#eafff0', true, 'center', W - 12);
-    var sub = this.subText(); if (sub) B.text(c, sub, W / 2, y + 44, 13, '#cfe8d5', false, 'center', W - 12);
+    var line = this.statusText(); this.fitText(line, W / 2, y + 20, 17, '#eafff0', true, W - 16);
+    var sub = this.subText(); if (sub) this.fitText(sub, W / 2, y + 44, 13, '#cfe8d5', false, W - 16);
     if (g.game === 'luzhanqi' && g.setup && s.phase === 'setup') {
       var bw = Math.min(150, W / 2 - 14);
       if (!g.setup.done) {
@@ -794,7 +804,6 @@
   P.multiSub = function () {
     var g = this.g, s = g.vs;
     if (g.mode === 'online' && g.players) { var off = g.players.filter(function (p, i) { return p && !p.online && !p.bot; }); if (off.length) return 'A player disconnected - waiting up to 60 s (the computer plays meanwhile)'; }
-    if (g.game === 'zhajinhua') return 'For entertainment only, virtual chips, no cash value, not redeemable';
     if (g.game === 'doudizhu' && s.landlord) return T('Landlord: {0} · Multiplier ×{1} · Bombs {2}', T((g.names && g.names[s.landlord]) || s.landlord), s.bid.high * s.mult, s.bombs);
     if (g.game === 'mahjong') return T('Dealer: {0} · Wall: {1} tiles', T((g.names && g.names[s.dealer]) || s.dealer), Math.max(0, s.wallCount - 14));
     return '';

@@ -110,6 +110,7 @@
     B.text(c, label, x + w / 2, y + h / 2 + 1, o.size || Math.min(22, h * 0.42), o.fg || '#fff', true);
     if (!o.disabled) this.hits.push({ x: x, y: y, w: w, h: h, cb: cb, click: o.click, label: label });
   };
+  var WEBSITE_URL = 'https://charitybox.netlify.app/';
   P.brandLine = function (y, withName) { // cbox brand + tagline (shown in the lobby and on every game screen)
     var c = this.ctx, W = this.W, str = (withName ? T('cbox') + ' · ' : '') + T(TAGLINE);
     B.text(c, str, W / 2, y, 10, '#ffd98a', false, 'center', W - 156);
@@ -120,6 +121,7 @@
     if (lobby) { B.text(c, 'cbox', W / 2, 18, 24, '#ffeb99', true); this.brandLine(37, false); }
     else { this.brandLine(11, true); B.text(c, title, W / 2, 31, 18, '#ffeb99', true, 'center', W - 156); }
     if (back) this.btn(8, 8, 64, 32, 'Back', back, { color: '#455a64', size: 15 });
+    if (lobby) this.btn(8, 8, 104, 24, '← Back to website', function () { try { if (typeof window !== 'undefined' && window.location) window.location.href = WEBSITE_URL; } catch (e) { /* non-web platform */ } }, { color: 'rgba(255,255,255,0.14)', size: 12, fg: '#ffeb99' });
     if (lobby) this.btn(W - 76, 8, 68, 32, I18n.lang === 'zh' ? 'English' : '中文', function () { this.toggleLang(); }.bind(this), { color: '#1565c0', size: 15, stroke: '#fff', label: I18n.lang === 'zh' ? 'English' : '中文' });
     // sound / music toggles (visible on every screen)
     var tw = Math.min(150, (W - 16) / 2 - 4), y = 52;

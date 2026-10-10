@@ -4,6 +4,7 @@
    Dynamic strings produced by the rule engines (results, error messages) are translated by the pattern rules below. */
 (function () {
  var ZH = {
+  '← Back to website': '← 返回官网',
  "Server waking up, please wait...": "服务器唤醒中，请稍候…",
  "The free server sleeps when idle; this can take up to a minute.": "免费服务器闲置会休眠，唤醒最多需要约一分钟。",
  "Reconnecting...": "正在重新连接…",

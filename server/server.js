@@ -19,6 +19,7 @@ const isMulti = g => (E.SEATS[g] || 2) > 2;
 const CAP_GAMES = ['zhajinhua', 'holdem'];
 const nSeats = room => CAP_GAMES.includes(room.game) ? (room.cap || 4) : (E.SEATS[room.game] || 2); // table size set by the host (2-6)
 const TURN_MS = +process.env.TURN_MS || 45000;      // 真人超时由电脑代打(托管)
+const QM_START_MS = +process.env.QM_START_MS || 3000; // quick match: delay after two humans meet before the computer fills the rest
 const BOT_DELAY = +process.env.BOT_DELAY || 700;     // 电脑出手前的停顿(毫秒)
 
 function send(ws, obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
@@ -153,6 +154,9 @@ const handlers = {
       if (!room) { room = createRoom(m.game, sess); room.pub = true; return send(sess.ws, snapshot(room, 1)); }
       const free = seatList(room).filter(i => !room.seats[i]); room.seats[free[0]] = sess; sess.room = room.code; sess.seat = free[0];
       if (seatList(room).every(i => room.seats[i])) startRoom(room);
+      else if (!room.qmTimer && seatList(room).filter(i => room.seats[i] && !room.seats[i].bot).length >= 2) { // two humans met: start soon, the computer fills the empty seats
+        room.qmTimer = setTimeout(() => { room.qmTimer = null; if (rooms.get(room.code) === room && room.status === 'waiting' && seatList(room).filter(i => room.seats[i] && !room.seats[i].bot).length >= 2) { startRoom(room); broadcast(room); } }, QM_START_MS);
+      }
       return broadcast(room);
     }
     const q = (queues[m.game] || (queues[m.game] = [])).filter(s => s.ws && s !== sess);

@@ -65,7 +65,7 @@
       if (mine) { if (mine.pass) text(ctx, 'Pass', W / 2, hy - 74, 18, '#ffcc80', true); else { var st2 = Math.min(18, (W - 60) / Math.max(1, mine.cards.length)), tw = (mine.cards.length - 1) * st2 + 26; drawCards(ctx, mine.cards, (W - tw) / 2, hy - 112, 26, 36, st2); } }
       // 我的身份
       var myRole = s.landlord ? T(me === s.landlord ? 'Landlord' : 'Farmer') : '';
-      text(ctx, T(names[me] || 'Me') + (myRole ? ' · ' + myRole : ''), 60, hy - 24 - 36 + 20, 13, s.turn === me && !s.over ? '#ffd600' : '#cfe8d5', true);
+      text(ctx, T(names[me] || 'Me') + (myRole ? ' · ' + myRole : ''), 12, hy - 24 - 36 + 20, 13, s.turn === me && !s.over ? '#ffd600' : '#cfe8d5', true, 'left', 220);
     },
     toggle: function (g, id, app) { g.sel = g.sel || {}; if (g.sel[id]) delete g.sel[id]; else g.sel[id] = true; app.dirty = true; },
     selected: function (g) { return Object.keys(g.sel || {}).map(Number).filter(function (id) { return g.sel[id]; }); }
@@ -174,7 +174,7 @@
         var act = s.turn === q && !s.over, out = s.status[q] !== 'active', tgt = !!(o && o.compare.some(function (c) { return c.target === q; }));
         rrect(ctx, x, y, cw, ch, 10); ctx.fillStyle = out ? 'rgba(0,0,0,0.5)' : act ? 'rgba(255,214,0,0.25)' : 'rgba(0,0,0,0.3)'; ctx.fill();
         ctx.strokeStyle = tgt ? '#00e676' : act ? '#ffd600' : 'rgba(255,255,255,0.3)'; ctx.lineWidth = tgt || act ? 3 : 1; ctx.stroke();
-        var nm = T(stripYou(names[q] || T('Player {0}', q))); if (nm.length > 9) nm = nm.slice(0, 9);
+        var nm = T(stripYou(names[q] || T('Player {0}', q))); if (nm.length > 10) nm = nm.slice(0, 9) + '…';
         text(ctx, nm + (q === s.dealer ? T(' · dealer') : ''), x + cw / 2, y + 12, 12, out ? '#90a4ae' : '#fff', true);
         text(ctx, T('Beans {0}', s.stacks[q]), x + cw / 2, y + 27, 12, '#ffeb99', false);
         var st = T(s.status[q] === 'folded' ? 'Folded' : s.status[q] === 'lost' ? 'Lost compare' : (s.seen[q] ? 'Seen' : 'Unseen')), at = actText(lastAct(s, q));
@@ -215,7 +215,7 @@
         var act = s.turn === q && !s.over, out = s.status[q] === 'folded' || s.status[q] === 'out', win = s.over && s.winners.indexOf(q) >= 0;
         rrect(ctx, x, y, cw, ch, 10); ctx.fillStyle = out ? 'rgba(0,0,0,0.5)' : act ? 'rgba(255,214,0,0.25)' : 'rgba(0,0,0,0.3)'; ctx.fill();
         ctx.strokeStyle = win ? '#ffd54f' : act ? '#ffd600' : 'rgba(255,255,255,0.3)'; ctx.lineWidth = win || act ? 3 : 1; ctx.stroke();
-        var nm = T(stripYou(names[q] || T('Player {0}', q))); if (nm.length > 9) nm = nm.slice(0, 9);
+        var nm = T(stripYou(names[q] || T('Player {0}', q))); if (nm.length > 10) nm = nm.slice(0, 9) + '…';
         text(ctx, nm, x + cw / 2 - 6, y + 11, 12, out ? '#90a4ae' : '#fff', true);
         if (q === s.dealer) { circle(ctx, x + cw - 11, y + 11, 8); ctx.fillStyle = '#ffd54f'; ctx.fill(); text(ctx, 'D', x + cw - 11, y + 11, 10, '#333', true); }
         else if (q === s.sbSeat || q === s.bbSeat) text(ctx, q === s.sbSeat ? 'SB' : 'BB', x + cw - 14, y + 11, 10, '#90caf9', true);

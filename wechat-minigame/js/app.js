@@ -66,7 +66,7 @@
     d.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:99;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(5,9,6,.92);color:#fff;font:600 18px sans-serif;text-align:center;padding:20px';
     d.innerHTML = '<div id="gh-ov-t"></div><div id="gh-ov-s" style="font-weight:400;font-size:13px;opacity:.8;margin-top:8px"></div>';
     var b = document.createElement('div');
-    b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:98;display:none;background:#ef6c00;color:#fff;font:600 14px sans-serif;text-align:center;padding:6px';
+    b.style.cssText = 'position:fixed;left:0;right:0;top:92px;z-index:98;display:none;background:#ef6c00;color:#fff;font:600 14px sans-serif;text-align:center;padding:5px;pointer-events:none'; // sits below the header bar so Back / sound buttons stay visible and tappable
     document.body.appendChild(d); document.body.appendChild(b); this.ovEl = d; this.bnEl = b;
     setInterval(function () { self.updateOverlay(); }, 500);
     var url = this.pf.serverUrl && this.pf.serverUrl(); if (typeof fetch !== 'function' || !url) return;
@@ -398,8 +398,10 @@
   P.draw_matching = function () {
     var c = this.ctx, W = this.W, self = this; this.header('Quick Match', function () { self.cancelMatch(); self.setScene('mode'); });
     var left = Math.max(0, Math.ceil((MATCH_WAIT_MS - (Date.now() - this.matchStart)) / 1000));
-    B.text(c, 'Looking for an opponent…', W / 2, 160, 24, '#fff', true);
-    B.text(c, T('No human found in {0} s - starting a game against the computer', left), W / 2, 205, 15, '#ffcc80');
+    var paired = this.humansWaiting() >= 2;
+    B.text(c, paired ? 'Opponent found!' : 'Looking for an opponent…', W / 2, 160, 24, '#fff', true);
+    if (paired) this.wrapText('Starting the game, empty seats are filled by the computer…', W / 2, 205, 14, '#9cc3a8', W - 40);
+    else B.text(c, T('No human found in {0} s - starting a game against the computer', left), W / 2, 205, 15, '#ffcc80');
     var a = Date.now() / 300; c.strokeStyle = '#ffeb99'; c.lineWidth = 6; c.beginPath(); c.arc(W / 2, 290, 30, a, a + 4); c.stroke();
     this.btn(W / 2 - 80, 360, 160, 48, 'Cancel', function () { self.cancelMatch(); self.setScene('mode'); }, { color: '#c62828' });
   };
@@ -407,10 +409,12 @@
   /* ---------- 联机流程 ---------- */
   P.createRoom = function () { var self = this; this.roomCode = ''; this.pendingGame = this.cur.id; this.net.start(); this.setScene('waiting'); this.sendWhenReady({ t: 'create', game: this.cur.id }); };
   P.joinRoom = function (code) { this.pendingGame = this.cur.id; this.sendWhenReady({ t: 'join', code: code }); };
-  P.quickMatch = function () { this.matchStart = Date.now(); this.pendingGame = this.cur.id; this.net.start(); this.setScene('matching'); this.sendWhenReady({ t: 'match', game: this.cur.id }); };
+  P.quickMatch = function () { this.matchStart = Date.now(); this.roomPlayers = null; this.pendingGame = this.cur.id; this.net.start(); this.setScene('matching'); this.sendWhenReady({ t: 'match', game: this.cur.id }); };
+  P.humansWaiting = function () { return this.scene === 'matching' && this.roomPlayers ? this.roomPlayers.filter(function (p) { return p && !p.bot; }).length : 0; };
   P.cancelMatch = function () { this.net.send({ t: 'cancelMatch' }); };
   P.matchTimeout = function () {
     if (this.scene !== 'matching') return;
+    if (this.humansWaiting() >= 2) { this.matchStart = Date.now() - MATCH_WAIT_MS + 12000; return; } // another human is in our server room: the server starts the game shortly
     this.net.send({ t: 'cancelMatch' }); this.say('No human opponent found - starting a game against the computer');
     this.startLocal(this.cur.id, 2, this.cur.multi ? 1 : 1 + Math.floor(Math.random() * 2));
   };
@@ -601,13 +605,19 @@
     if (g.game === 'luzhanqi' && s.dead) return T('Lost pieces: yours {0} · enemy {1}', s.dead.filter(function (d) { return d.p === g.seat; }).length, s.dead.filter(function (d) { return d.p !== g.seat; }).length);
     return '';
   };
+  P.reasonFor = function (s, me) { // the engines write the reason once for both players; word it from this player's point of view
+    var r = s.reason || '', win = s.winner === me, loseSide = s.winner === 1 || s.winner === 2;
+    if (loseSide && (r === 'You have no movable piece' || r === 'The opponent has no movable piece')) return win ? 'The opponent has no movable piece' : 'You have no movable piece';
+    if (loseSide && !win && r === 'Opponent resigned / left') return 'You resigned';
+    return r;
+  };
   P.overlay = function () {
     var c = this.ctx, W = this.W, H = this.H, g = this.g, self = this, s = g.state;
     var w = Math.min(W - 40, 320), h = 200, x = (W - w) / 2, y = (H - h) / 2 - 20;
     B.rrect(c, x, y, w, h, 16); c.fillStyle = 'rgba(10,25,18,0.93)'; c.fill(); c.strokeStyle = '#ffeb99'; c.lineWidth = 2; c.stroke();
     var win = s.winner === g.seat;
     B.text(c, s.winner === 3 ? 'Draw' : win ? 'Victory!' : 'Defeat', x + w / 2, y + 40, 32, win ? '#ffd54f' : '#b0bec5', true);
-    B.text(c, s.reason || '', x + w / 2, y + 78, 15, '#cfe8d5');
+    B.text(c, this.reasonFor(s, g.seat), x + w / 2, y + 78, 15, '#cfe8d5', false, 'center', w - 20);
     if (g.mode === 'ai') this.btn(x + 16, y + 120, w / 2 - 22, 50, 'Play Again', function () { self.startLocal(g.game, g.level, g.seat); }, { color: '#2e7d32' });
     this.btn(g.mode === 'ai' ? x + w / 2 + 6 : x + 40, y + 120, g.mode === 'ai' ? w / 2 - 22 : w - 80, 50, 'Back to Lobby', function () { self.leaveGame(); }, { color: '#455a64' });
   };
@@ -815,7 +825,7 @@
     B.rrect(c, x, y, w, h, 16); c.fillStyle = 'rgba(10,25,18,0.95)'; c.fill(); c.strokeStyle = '#ffeb99'; c.lineWidth = 2; c.stroke();
     var won = s.winners && s.winners.indexOf(g.seat) >= 0, none = !(s.winners && s.winners.length);
     B.text(c, none ? 'Game over' : won ? 'Victory!' : 'Defeat', x + w / 2, y + 30, 28, none ? '#cfd8dc' : won ? '#ffd54f' : '#b0bec5', true);
-    var rsn = T(s.reason || '').replace(/[Ss]eat (\d+)|座位 ?(\d+)/g, function (m0, a, b) { var q = a || b, nmq = g.names && g.names[q]; return nmq ? T(nmq) : m0; });
+    var rsn = T(s.reason || '').replace(/([A-Za-z])(\d+)(?=;|$)/g, I18n.lang === 'zh' ? '$1$2' : '$1 ×$2').replace(/[Ss]eat (\d+)|座位 ?(\d+)/g, function (m0, a, b) { var q = a || b, nmq = g.names && g.names[q]; return nmq ? T(nmq) : m0; });
     var lines = wrap(c, rsn, w - 28, 13); lines.slice(0, 3).forEach(function (l, i) { B.text(c, l, x + w / 2, y + 62 + i * 18, 13, '#cfe8d5', false); });
     var ty = y + 124; for (var p = 1; p <= (s.n || info.seats); p++) { var d = (s.scores[p] || 0) * info.unit; B.text(c, T((g.names && g.names[p]) || T('Player {0}', p)) + (g.game === 'doudizhu' && s.landlord === p ? ' [' + T('Landlord') + ']' : '') + (g.game === 'zhajinhua' && s.handNames && s.handNames[p] ? ' [' + T(s.handNames[p]) + ']' : '') + (g.game === 'holdem' && s.hnames && s.hnames[p] ? ' [' + T(s.hnames[p]) + ']' : ''), x + 20, ty, 14, '#fff', false, 'left'); B.text(c, (d > 0 ? '+' : '') + d + (info.holdem ? T(' chips') : T(' beans')), x + w - 20, ty, 14, d > 0 ? '#ffd54f' : d < 0 ? '#ef9a9a' : '#cfd8dc', true, 'right'); ty += 24; }
     if (g.game === 'holdem') B.text(c, T('Your chips (virtual): {0}', s.stacks[g.seat]), x + w / 2, ty + 8, 14, '#ffeb99', true);
@@ -823,7 +833,7 @@
     var by = y + h - 64;
     if (g.mode === 'ai') this.btn(x + 16, by, w / 2 - 22, 48, g.game === 'holdem' ? 'Next Hand' : 'Play Again', function () { self.startLocalMulti(g.game, g.level, g.n); }, { color: '#2e7d32' });
     else if (g.host === g.seat) this.btn(x + 16, by, w / 2 - 22, 48, g.game === 'holdem' ? 'Next Hand' : 'Play Again', function () { self.net.send({ t: 'again' }); }, { color: '#2e7d32' });
-    else B.text(c, 'Waiting for the host to start another hand', x + w / 4 + 8, by + 24, 13, '#cfe8d5');
+    else this.wrapText(T('Waiting for the host to start another hand'), x + 16 + (w / 2 - 22) / 2, by + 8, 12, '#cfe8d5', w / 2 - 28);
     this.btn(x + w / 2 + 6, by, w / 2 - 22, 48, 'Back to Lobby', function () { self.leaveGame(); }, { color: '#455a64' });
   };
 

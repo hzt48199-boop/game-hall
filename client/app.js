@@ -808,14 +808,15 @@
     if (g.game === 'mahjong') return T('Dealer: {0} · Wall: {1} tiles', T((g.names && g.names[s.dealer]) || s.dealer), Math.max(0, s.wallCount - 14));
     return '';
   };
-  function wrap(ctx, str, maxW, size) { ctx.font = size + 'px sans-serif'; var out = [], cur = ''; for (var i = 0; i < str.length; i++) { var t = cur + str[i]; if (ctx.measureText && ctx.measureText(t).width > maxW && cur) { out.push(cur); cur = str[i]; } else cur = t; } if (cur) out.push(cur); return out; }
+  function wrap(ctx, str, maxW, size) { ctx.font = size + 'px sans-serif'; var out = [], cur = '', toks = str.split(/(?<=[\s,，。;；-])|(?=[\u3000-\u9fff])/); toks.forEach(function (t) { if (cur && ctx.measureText(cur + t).width > maxW) { out.push(cur.trim()); cur = t; } else cur += t; }); if (cur) out.push(cur.trim()); return out; }
   P.multiOverlay = function () {
     var c = this.ctx, W = this.W, H = this.H, g = this.g, self = this, s = g.vs, info = this.gameInfo(g.game);
     var w = Math.min(W - 24, 350), h = 330 + Math.max(0, (s.n || 0) - 4) * 24, x = (W - w) / 2, y = Math.max(96, (H - h) / 2 - 30);
     B.rrect(c, x, y, w, h, 16); c.fillStyle = 'rgba(10,25,18,0.95)'; c.fill(); c.strokeStyle = '#ffeb99'; c.lineWidth = 2; c.stroke();
     var won = s.winners && s.winners.indexOf(g.seat) >= 0, none = !(s.winners && s.winners.length);
     B.text(c, none ? 'Game over' : won ? 'Victory!' : 'Defeat', x + w / 2, y + 30, 28, none ? '#cfd8dc' : won ? '#ffd54f' : '#b0bec5', true);
-    var lines = wrap(c, s.reason || '', w - 28, 13); lines.slice(0, 3).forEach(function (l, i) { B.text(c, l, x + w / 2, y + 62 + i * 18, 13, '#cfe8d5', false); });
+    var rsn = T(s.reason || '').replace(/[Ss]eat (\d+)|座位 ?(\d+)/g, function (m0, a, b) { var q = a || b, nmq = g.names && g.names[q]; return nmq ? T(nmq) : m0; });
+    var lines = wrap(c, rsn, w - 28, 13); lines.slice(0, 3).forEach(function (l, i) { B.text(c, l, x + w / 2, y + 62 + i * 18, 13, '#cfe8d5', false); });
     var ty = y + 124; for (var p = 1; p <= (s.n || info.seats); p++) { var d = (s.scores[p] || 0) * info.unit; B.text(c, T((g.names && g.names[p]) || T('Player {0}', p)) + (g.game === 'doudizhu' && s.landlord === p ? ' [' + T('Landlord') + ']' : '') + (g.game === 'zhajinhua' && s.handNames && s.handNames[p] ? ' [' + T(s.handNames[p]) + ']' : '') + (g.game === 'holdem' && s.hnames && s.hnames[p] ? ' [' + T(s.hnames[p]) + ']' : ''), x + 20, ty, 14, '#fff', false, 'left'); B.text(c, (d > 0 ? '+' : '') + d + (info.holdem ? T(' chips') : T(' beans')), x + w - 20, ty, 14, d > 0 ? '#ffd54f' : d < 0 ? '#ef9a9a' : '#cfd8dc', true, 'right'); ty += 24; }
     if (g.game === 'holdem') B.text(c, T('Your chips (virtual): {0}', s.stacks[g.seat]), x + w / 2, ty + 8, 14, '#ffeb99', true);
     else B.text(c, T('Happy Beans (virtual): {0}', this.beans) + (g.relief ? T(' (topped up to 1000)') : ''), x + w / 2, ty + 8, 14, '#ffeb99', true);

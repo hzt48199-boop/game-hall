@@ -167,7 +167,7 @@
       var s = g.vs, me = g.seat, W = app.W, names = g.names || {}, self = this, n = s.n, i, p;
       text(ctx, 'For entertainment only, virtual chips, no cash value, not redeemable', W / 2, rect.y + 8, 11, '#ffcc80', true, 'center', W - 12);
       var others = []; for (i = 1; i < n; i++) others.push(((me - 1 + i) % n) + 1);
-      var cols = Math.min(3, others.length), cw = (W - 16 - (cols - 1) * 6) / cols, ch = 88, y0 = rect.y + 20;
+      var cols = Math.min(3, others.length), cw = (W - 16 - (cols - 1) * 6) / cols, ch = 92, y0 = rect.y + 20;
       var o = g.pick ? Z.options(s, me) : null;
       others.forEach(function (q, idx) {
         var col = idx % cols, row = Math.floor(idx / cols), x = 8 + col * (cw + 6), y = y0 + row * (ch + 6);
@@ -181,7 +181,7 @@
         text(ctx, st + (at && !out ? ' · ' + at : ''), x + cw / 2, y + 42, 11, out ? '#b0bec5' : (s.seen[q] ? '#a5d6a7' : '#cfe8d5'), false);
         var hs = s.hands[q], w2 = 22, h2 = 30, tot = 3 * w2 + 2 * 4, sx = x + (cw - tot) / 2;
         for (var c = 0; c < 3; c++) drawPoker(ctx, sx + c * (w2 + 4), y + 50, w2, h2, hs ? hs[c] : null, { back: !hs, dim: out });
-        if (hs && s.handNames[q]) text(ctx, T(s.handNames[q]), x + cw / 2, y + ch - 6, 10, '#ffd54f', true);
+        if (hs && s.handNames[q]) text(ctx, T(s.handNames[q]), x + cw / 2, y + ch - 5, 10, '#ffd54f', true);
         if (tgt) app.hits.push({ x: x, y: y, w: cw, h: ch, label: 'target' + q, cb: function () { g.pick = false; app.sendMulti({ a: 'compare', target: q }); } });
       });
       var rows = Math.ceil(others.length / cols), cy = y0 + rows * (ch + 6) + 6;

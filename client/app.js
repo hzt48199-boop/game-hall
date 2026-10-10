@@ -174,7 +174,7 @@
     var c = this.ctx; this.hits = [];
     c.fillStyle = this.scene === 'game' ? '#1f4d3a' : '#050806'; c.fillRect(0, 0, this.W, this.H);
     var fn = this['draw_' + this.scene]; if (fn) fn.call(this);
-    if (this.toast) { var w = Math.min(this.W - 40, 360); B.rrect(c, (this.W - w) / 2, this.H - 120, w, 44, 10); c.fillStyle = 'rgba(0,0,0,0.8)'; c.fill(); B.text(c, this.toast.text, this.W / 2, this.H - 98, 16, '#fff', false); }
+    if (this.toast) { var w = Math.min(this.W - 40, 360), ty = this.scene === 'lobby' ? 98 : this.H - 120; B.rrect(c, (this.W - w) / 2, ty, w, 44, 10); c.fillStyle = 'rgba(0,0,0,0.92)'; c.fill(); if (this.scene === 'lobby') { c.strokeStyle = GREEN; c.lineWidth = 1.5; c.stroke(); } B.text(c, this.toast.text, this.W / 2, ty + 22, 16, '#fff', false, 'center', w - 20); }
   };
   P.updateWait = function () {
     var g = this.g, want = this.scene === 'waiting' || this.scene === 'matching';
@@ -194,14 +194,15 @@
   };
 
   /* ---------- 大厅 / 模式 ---------- */
-  var CARD_H = 84, CARD_GAP = 10, BANNER_H = 108, AD_H = 56, TABS = [['all', 'All'], ['board', 'Board'], ['cards', 'Cards']];
+  var CARD_H = 84, CARD_GAP = 10, BANNER_H = 108, AD_H = 56, AD_H2 = 96, TABS = [['all', 'All'], ['board', 'Board'], ['cards', 'Cards']];
   function tag(c, x, y, str, kind) { // small green badge; returns its width
     var w = estW(str, 10) + 14; B.rrect(c, x, y, w, 17, 8.5);
     c.fillStyle = kind === 'new' ? GREEN : 'rgba(57,231,95,0.10)'; c.fill(); c.strokeStyle = kind === 'new' ? GREEN : '#1f5a31'; c.lineWidth = 1; c.stroke();
     B.text(c, str, x + w / 2, y + 9, 10, kind === 'new' ? '#04210d' : '#6fe58f', true); return w;
   }
   P.lobbyList = function () { var cat = this.cat; return GAMES.filter(function (g) { return cat === 'all' || g.cat === cat; }); };
-  P.lobbyMax = function () { var n = this.lobbyList().length; return Math.max(0, 90 + 14 + BANNER_H + 16 + 46 + 16 + n * (CARD_H + CARD_GAP) + 46 + AD_H + 12 - this.H); };
+  function adH(cw) { return cw < 440 ? AD_H2 : AD_H; }
+  P.lobbyMax = function () { var n = this.lobbyList().length; return Math.max(0, 90 + 14 + BANNER_H + 16 + 46 + 16 + n * (CARD_H + CARD_GAP) + 46 + adH(Math.min(this.W - 24, 520)) + 12 - this.H); };
   P.scrollBy = function (dy) { if (this.scene !== 'lobby') return; this.scroll = Math.max(0, Math.min(this.lobbyMax(), this.scroll + dy)); this.dirty = true; };
   P.draw_lobby = function () {
     var c = this.ctx, W = this.W, self = this, cw = Math.min(W - 24, 520), x = (W - cw) / 2;
@@ -218,7 +219,7 @@
     B.text(c, T('cbox') + ' · Charity Box', x + 16, y + 48, 12, '#7fcf95', false, 'left', cw - 100);
     B.text(c, T(TAGLINE), x + 16, y + 74, 16, '#fff', true, 'left', cw - 32);
     y += BANNER_H + 12;
-    this.drawAdRow(x, y, cw); y += AD_H + 12;
+    this.drawAdRow(x, y, cw); y += adH(cw) + 12;
     // category tab pill bar
     B.rrect(c, x, y, cw, 46, 23); c.fillStyle = '#0a100c'; c.fill(); c.strokeStyle = '#1c3a27'; c.lineWidth = 1.5; c.stroke();
     var tw = (cw - 8) / TABS.length;
@@ -259,11 +260,19 @@
   P.drawAdRow = function (x, y, cw) {
     var c = this.ctx, self = this, a = this.adInfo, amt = (a && a.amount) || 500;
     var off = a && (a.remaining <= 0 || (a.cdUntil && a.cdUntil > Date.now())) || this.adBusy;
-    B.rrect(c, x, y, cw, AD_H, 18); c.fillStyle = '#0a110c'; c.fill(); c.strokeStyle = '#1c3a27'; c.lineWidth = 1.5; c.stroke();
+    var narrow = cw < 440, h = adH(cw);
+    B.rrect(c, x, y, cw, h, 18); c.fillStyle = '#0a110c'; c.fill(); c.strokeStyle = '#1c3a27'; c.lineWidth = 1.5; c.stroke();
+    var label = T('Watch ad · +{0} chips', amt);
+    if (narrow) {
+      B.text(c, T('Happy Beans (virtual): {0}', this.beans), x + 14, y + 20, 13, '#ffe58a', true, 'left', cw - 28);
+      B.text(c, this.adLine(), x + 14, y + 39, 11, MUTED, false, 'left', cw - 28);
+      this.btn(x + 10, y + h - 44, cw - 20, 36, label, function () { self.adStart(); }, { color: '#2e7d32', size: 13, disabled: off });
+      return;
+    }
     B.text(c, T('Happy Beans (virtual): {0}', this.beans), x + 14, y + 20, 13, '#ffe58a', true, 'left', cw - 200);
     B.text(c, this.adLine(), x + 14, y + 39, 11, MUTED, false, 'left', cw - 200);
     var bw = Math.min(190, cw - 180), bw2 = Math.max(150, bw);
-    this.btn(x + cw - bw2 - 10, y + 10, bw2, 36, T('Watch ad · +{0} chips', amt), function () { self.adStart(); }, { color: '#2e7d32', size: 13, disabled: off });
+    this.btn(x + cw - bw2 - 10, y + 10, bw2, 36, label, function () { self.adStart(); }, { color: '#2e7d32', size: 13, disabled: off });
   };
   P.adSendStart = function () { this.net.send({ t: 'adStart' }); };
   P.adStart = function () {

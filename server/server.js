@@ -5,6 +5,7 @@ const { WebSocketServer } = require('ws');
 const crypto = require('crypto');
 const E = require('../shared/engines');
 const AI = require('../shared/ai');
+const Ads = require('./ads').create(); // rewarded-ad tickets for virtual chips (see server/ads.js)
 
 const PORT = +process.env.PORT || 8081;
 const GRACE_MS = +process.env.GRACE_MS || 60000;
@@ -211,6 +212,9 @@ const handlers = {
     E[room.game].resign(room.state, sess.seat); room.status = 'over'; broadcast(room);
   },
   leave(sess) { leaveRoom(sess); send(sess.ws, { t: 'left' }); },
+  adStatus(sess) { send(sess.ws, Object.assign({ t: 'adStatus' }, Ads.status(sess.token))); },
+  adStart(sess) { const r = Ads.start(sess.token, sess.ip); send(sess.ws, r.ok ? Object.assign({ t: 'adTicket' }, r) : Object.assign({ t: 'adDenied' }, r)); },
+  adClaim(sess, m) { const r = Ads.claim(sess.token, m.ticket, sess.ip); send(sess.ws, r.ok ? Object.assign({ t: 'adGrant' }, r) : Object.assign({ t: 'adDenied' }, r)); },
   ping(sess) { send(sess.ws, { t: 'pong' }); }
 };
 
@@ -225,7 +229,7 @@ function onHello(ws, m) {
     sess = { token: crypto.randomBytes(16).toString('hex'), ws, name: cleanName(m.name), room: null, seat: 0, timer: null };
     sessions.set(sess.token, sess);
   }
-  ws.sess = sess;
+  ws.sess = sess; sess.ip = ws.ip;
   send(ws, { t: 'welcome', token: sess.token, name: sess.name });
   const room = rooms.get(sess.room);
   if (room) { sess.auto = false; send(ws, snapshot(room, sess.seat)); broadcast(room); }
@@ -263,7 +267,8 @@ function start(port) {
   const httpServer = http.createServer(httpHandler);
   const wss = new WebSocketServer({ server: httpServer, maxPayload: 8192 });
   httpServer.listen(port === undefined ? PORT : port);
-  wss.on('connection', ws => {
+  wss.on('connection', (ws, req) => {
+    ws.ip = String((req.headers['x-forwarded-for'] || (req.socket && req.socket.remoteAddress) || '')).split(',')[0].trim();
     ws.alive = true; ws.on('pong', () => { ws.alive = true; });
     let count = 0, t0 = Date.now();
     ws.on('message', data => {
@@ -279,7 +284,7 @@ function start(port) {
     ws.on('error', () => { });
   });
   const hb = setInterval(() => { wss.clients.forEach(ws => { if (!ws.alive) return ws.terminate(); ws.alive = false; try { ws.ping(); } catch (e) { } }); }, 15000);
-  const gc = setInterval(() => { const now = Date.now(); rooms.forEach((r, k) => { if (now - r.created > ROOM_TTL_MS && (r.status === 'waiting' || r.status === 'over')) rooms.delete(k); }); }, 60000);
+  const gc = setInterval(() => { Ads.prune(); const now = Date.now(); rooms.forEach((r, k) => { if (now - r.created > ROOM_TTL_MS && (r.status === 'waiting' || r.status === 'over')) rooms.delete(k); }); }, 60000);
   wss.on('close', () => { clearInterval(hb); clearInterval(gc); try { httpServer.close(); } catch (e) { } });
   return wss;
 }

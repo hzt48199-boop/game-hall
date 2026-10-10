@@ -4,6 +4,7 @@
   var req = typeof require === 'function';
   var E = req ? require('./engines.js') : GH.Engines;
   var AI = req ? require('./ai.js') : GH.AI;
+  var Ads = req ? require('./ads.js') : GH.Ads;
   var Net = req ? require('./net.js') : GH.Net;
   var Sound = req ? require('./sound.js') : GH.Sound;
   var B = req ? require('./boards.js') : GH.Boards;
@@ -40,6 +41,8 @@
     this.net = Net.create({ url: pf.serverUrl, storage: pf.storage });
     this.net.onMessage = function (m) { self.onNet(m); };
     this.net.onStatus = function (s) { self.netState = s; self.dirty = true; if (s === 'failed') self.onNetFailed(); self.updateOverlay(); };
+    this.adInfo = null; this.adPending = false; this.adTicket = null; this.adBusy = false; this.adBackScene = 'lobby';
+    Ads.onChange = function () { self.dirty = true; };
     this.warming = false; this.wasReady = false; this.initOverlay();
     I18n.init(pf.storage); this.applyLang();
     this.setScene('lobby');
@@ -191,14 +194,14 @@
   };
 
   /* ---------- 大厅 / 模式 ---------- */
-  var CARD_H = 84, CARD_GAP = 10, BANNER_H = 108, TABS = [['all', 'All'], ['board', 'Board'], ['cards', 'Cards']];
+  var CARD_H = 84, CARD_GAP = 10, BANNER_H = 108, AD_H = 56, TABS = [['all', 'All'], ['board', 'Board'], ['cards', 'Cards']];
   function tag(c, x, y, str, kind) { // small green badge; returns its width
     var w = estW(str, 10) + 14; B.rrect(c, x, y, w, 17, 8.5);
     c.fillStyle = kind === 'new' ? GREEN : 'rgba(57,231,95,0.10)'; c.fill(); c.strokeStyle = kind === 'new' ? GREEN : '#1f5a31'; c.lineWidth = 1; c.stroke();
     B.text(c, str, x + w / 2, y + 9, 10, kind === 'new' ? '#04210d' : '#6fe58f', true); return w;
   }
   P.lobbyList = function () { var cat = this.cat; return GAMES.filter(function (g) { return cat === 'all' || g.cat === cat; }); };
-  P.lobbyMax = function () { var n = this.lobbyList().length; return Math.max(0, 90 + 14 + BANNER_H + 16 + 46 + 16 + n * (CARD_H + CARD_GAP) + 46 - this.H); };
+  P.lobbyMax = function () { var n = this.lobbyList().length; return Math.max(0, 90 + 14 + BANNER_H + 16 + 46 + 16 + n * (CARD_H + CARD_GAP) + 46 + AD_H + 12 - this.H); };
   P.scrollBy = function (dy) { if (this.scene !== 'lobby') return; this.scroll = Math.max(0, Math.min(this.lobbyMax(), this.scroll + dy)); this.dirty = true; };
   P.draw_lobby = function () {
     var c = this.ctx, W = this.W, self = this, cw = Math.min(W - 24, 520), x = (W - cw) / 2;
@@ -214,7 +217,8 @@
     tag(c, x + 16, y + 14, T('Free to play'), 'new');
     B.text(c, T('cbox') + ' · Charity Box', x + 16, y + 48, 12, '#7fcf95', false, 'left', cw - 100);
     B.text(c, T(TAGLINE), x + 16, y + 74, 16, '#fff', true, 'left', cw - 32);
-    y += BANNER_H + 16;
+    y += BANNER_H + 12;
+    this.drawAdRow(x, y, cw); y += AD_H + 12;
     // category tab pill bar
     B.rrect(c, x, y, cw, 46, 23); c.fillStyle = '#0a100c'; c.fill(); c.strokeStyle = '#1c3a27'; c.lineWidth = 1.5; c.stroke();
     var tw = (cw - 8) / TABS.length;
@@ -244,6 +248,65 @@
     });
     B.text(c, 'For entertainment only - virtual chips, no cash value, not redeemable', W / 2, y + 14, 11, '#6f8577', false, 'center', W - 24);
     this.header('cbox', null); // drawn last so scrolled content slides underneath the fixed bar
+  };
+  /* ---- Watch ad, get chips (virtual, entertainment only) ---- */
+  P.adLine = function () {
+    var a = this.adInfo; if (!a) return T('Up to {0} per day · {1}s cooldown', 5, 60);
+    if (a.remaining <= 0) return T('Daily limit reached · back tomorrow');
+    if (a.cdUntil && a.cdUntil > Date.now()) return T('Next ad in {0}s', Math.ceil((a.cdUntil - Date.now()) / 1000));
+    return T('{0} left today', a.remaining);
+  };
+  P.drawAdRow = function (x, y, cw) {
+    var c = this.ctx, self = this, a = this.adInfo, amt = (a && a.amount) || 500;
+    var off = a && (a.remaining <= 0 || (a.cdUntil && a.cdUntil > Date.now())) || this.adBusy;
+    B.rrect(c, x, y, cw, AD_H, 18); c.fillStyle = '#0a110c'; c.fill(); c.strokeStyle = '#1c3a27'; c.lineWidth = 1.5; c.stroke();
+    B.text(c, T('Happy Beans (virtual): {0}', this.beans), x + 14, y + 20, 13, '#ffe58a', true, 'left', cw - 200);
+    B.text(c, this.adLine(), x + 14, y + 39, 11, MUTED, false, 'left', cw - 200);
+    var bw = Math.min(190, cw - 180), bw2 = Math.max(150, bw);
+    this.btn(x + cw - bw2 - 10, y + 10, bw2, 36, T('Watch ad · +{0} chips', amt), function () { self.adStart(); }, { color: '#2e7d32', size: 13, disabled: off });
+  };
+  P.adSendStart = function () { this.net.send({ t: 'adStart' }); };
+  P.adStart = function () {
+    if (this.adBusy) return; this.adBusy = true; this.adPending = true; this.dirty = true;
+    var self = this;
+    if (this.net.ready) this.adSendStart(); else { this.net.start(); this.say('Connecting to the server...'); }
+    setTimeout(function () { if (self.adPending) { self.adPending = false; self.adBusy = false; self.say('Cannot connect to the online server'); self.dirty = true; } }, 20000);
+  };
+  var AD_ERR = { cap: 'Daily ad limit reached. Come back tomorrow', cooldown: 'Please wait a moment before the next ad', badticket: 'Ad ticket invalid or expired. Please try again', expired: 'Ad ticket invalid or expired. Please try again', toosoon: 'Please watch the full ad first' };
+  P.onAdMsg = function (m) {
+    if (m.t === 'adStatus' || m.t === 'adTicket' || m.t === 'adDenied' || m.t === 'adGrant') {
+      this.adInfo = { amount: m.amount, cap: m.cap, remaining: m.remaining, cdUntil: m.cooldownMs ? Date.now() + m.cooldownMs : 0 };
+    }
+    var self = this;
+    if (m.t === 'adTicket') {
+      this.adPending = false; this.adTicket = m.ticket; this.adBackScene = 'lobby'; this.setScene('ad');
+      Ads.show({ minMs: m.minMs }).then(function (ok) {
+        if (!ok) { self.adTicket = null; self.adBusy = false; self.setScene('lobby'); self.say('Ad was not completed, no chips granted'); return; }
+        if (!self.net.send({ t: 'adClaim', ticket: self.adTicket })) { self.adBusy = false; self.setScene('lobby'); self.say('Cannot connect to the online server'); }
+      });
+    } else if (m.t === 'adGrant') {
+      this.adBusy = false; this.adTicket = null; this.beans = Math.max(0, this.beans + m.granted); this.pf.storage.set('gh_beans', String(this.beans));
+      this.setScene('lobby'); this.say(T('+{0} chips added to your Happy Beans', m.granted));
+    } else if (m.t === 'adDenied') {
+      this.adPending = false; this.adBusy = false; this.adTicket = null; if (this.scene === 'ad') { Ads.state = null; this.setScene('lobby'); }
+      this.say(m.code === 'cooldown' && m.cooldownMs ? T('Please wait {0}s before the next ad', Math.ceil(m.cooldownMs / 1000)) : (AD_ERR[m.code] || 'Action failed'));
+    }
+  };
+  P.draw_ad = function () {
+    var c = this.ctx, W = this.W, H = this.H, self = this, left = Ads.left(), s = Ads.state, ms = s ? s.ms : 5000, done = !!s && left <= 0, amt = (this.adInfo && this.adInfo.amount) || 500;
+    c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+    var pw = Math.min(W - 32, 420), px = (W - pw) / 2, ph = 300, py = Math.max(20, (H - ph) / 2);
+    B.rrect(c, px, py, pw, ph, 22); c.fillStyle = '#0a110c'; c.fill(); c.strokeStyle = '#2a6b3d'; c.lineWidth = 2; c.stroke();
+    B.rrect(c, px + 14, py + 14, 110, 22, 11); c.fillStyle = '#3b3b1e'; c.fill();
+    B.text(c, T('Ad placeholder'), px + 69, py + 26, 12, '#ffe58a', true, 'center', 104);
+    B.text(c, T('Ad placeholder'), W / 2, py + 84, 26, '#eafff0', true, 'center', pw - 24);
+    B.text(c, T('Test ad slot - no real advertisement is shown.'), W / 2, py + 114, 12, MUTED, false, 'center', pw - 24);
+    var bx = px + 24, bwid = pw - 48, frac = Math.min(1, 1 - left / ms);
+    B.rrect(c, bx, py + 148, bwid, 10, 5); c.fillStyle = '#16241b'; c.fill();
+    if (frac > 0.02) { B.rrect(c, bx, py + 148, bwid * frac, 10, 5); c.fillStyle = GREEN; c.fill(); }
+    B.text(c, done ? T('Thanks for watching!') : T('Reward in {0}s', Math.ceil(left / 1000)), W / 2, py + 180, 15, done ? GREEN : '#cfe8d5', true, 'center', pw - 24);
+    this.btn(px + 30, py + 202, pw - 60, 44, T('Claim +{0} chips', amt), function () { Ads.finish(true); }, { color: '#2e7d32', size: 17, disabled: !done });
+    B.text(c, T('For entertainment only - virtual chips, no cash value, not redeemable'), W / 2, py + 274, 10, '#6f8577', false, 'center', pw - 20);
   };
   P.draw_mode = function () {
     var c = this.ctx, W = this.W, g = this.cur, self = this; this.header(g.name, function () { self.setScene('lobby'); });
@@ -342,7 +405,9 @@
   };
   P.onNet = function (m) {
     this.dirty = true;
-    if (m.t === 'err') { this.say(m.msg || 'Action failed'); return; }
+    if (m.t === 'err') { if (this.adPending) { this.adPending = false; this.adBusy = false; } this.say(m.msg || 'Action failed'); return; }
+    if (m.t === 'welcome') { if (this.adPending) this.adSendStart(); else this.net.send({ t: 'adStatus' }); return; }
+    if (m.t && m.t.indexOf('ad') === 0 && m.t !== 'adPending') { this.onAdMsg(m); return; }
     if (m.t !== 'room') return;
     var g = this.g;
     if (g && g.mode === 'online' && g.code === m.code) { this.applyRoom(m); return; }

@@ -4,7 +4,7 @@
    不设起胡番数(任何成牌即可胡,底 1 番);庄家(座位 dealer)先摸第 14 张;牌墙留 14 张,摸完即流局;不设抢杠胡、不设振听、一炮只能一人胡(按顺位)。
    状态机: phase 'discard'(turn 摸牌后须打出一张,或自摸/杠) → 'claim'(依次询问可胡/碰杠/吃的玩家) → 'over'。 */
 (function () {
-  var KN = ['一万', '二万', '三万', '四万', '五万', '六万', '七万', '八万', '九万', '一筒', '二筒', '三筒', '四筒', '五筒', '六筒', '七筒', '八筒', '九筒', '一条', '二条', '三条', '四条', '五条', '六条', '七条', '八条', '九条', '东', '南', '西', '北', '中', '发', '白'];
+  var KN = ['1 Char', '2 Char', '3 Char', '4 Char', '5 Char', '6 Char', '7 Char', '8 Char', '9 Char', '1 Dot', '2 Dot', '3 Dot', '4 Dot', '5 Dot', '6 Dot', '7 Dot', '8 Dot', '9 Dot', '1 Bam', '2 Bam', '3 Bam', '4 Bam', '5 Bam', '6 Bam', '7 Bam', '8 Bam', '9 Bam', 'East', 'South', 'West', 'North', 'Red Dragon', 'Green Dragon', 'White Dragon'];
   var ORPHANS = [0, 8, 9, 17, 18, 26, 27, 28, 29, 30, 31, 32, 33];
   function isHonor(k) { return k >= 27; }
   function suitOf(k) { return k < 27 ? Math.floor(k / 9) : 3; }
@@ -85,30 +85,30 @@
     function common(list) {
       var suits = {}, honors = 0, any = 0; for (var k = 0; k < 34; k++) if (all[k]) { any++; if (k >= 27) honors++; else suits[suitOf(k)] = 1; }
       var ns = Object.keys(suits).length;
-      if (ns === 0) list.push(['字一色', 6]); else if (ns === 1 && honors === 0) list.push(['清一色', 4]); else if (ns === 1) list.push(['混一色', 2]);
-      var simple = true; for (var q = 0; q < 34; q++) if (all[q] && !isSimple(q)) simple = false; if (simple) list.push(['断幺', 1]);
-      if (zimo) list.push(['自摸', 1]);
-      melds.forEach(function (m) { if (m.type === 'ankong') list.push(['暗杠', 2]); else if (m.type === 'kong' || m.type === 'addkong') list.push(['明杠', 1]); });
-      if (zimo && s.afterKong) list.push(['杠上开花', 1]);
-      if (lastTile) list.push([zimo ? '海底捞月' : '河底捞鱼', 1]);
+      if (ns === 0) list.push(['All Honors', 6]); else if (ns === 1 && honors === 0) list.push(['Full Flush', 4]); else if (ns === 1) list.push(['Half Flush', 2]);
+      var simple = true; for (var q = 0; q < 34; q++) if (all[q] && !isSimple(q)) simple = false; if (simple) list.push(['All Simples', 1]);
+      if (zimo) list.push(['Self-draw', 1]);
+      melds.forEach(function (m) { if (m.type === 'ankong') list.push(['Concealed Kong', 2]); else if (m.type === 'kong' || m.type === 'addkong') list.push(['Exposed Kong', 1]); });
+      if (zimo && s.afterKong) list.push(['Win after Kong', 1]);
+      if (lastTile) list.push([zimo ? 'Last Tile Draw' : 'Last Discard Win', 1]);
     }
-    if (nM === 0 && orphans13(c)) { finish([['十三幺', 10]].concat(zimo ? [['自摸', 1]] : [])); }
-    if (nM === 0 && sevenPairs(c)) { var l7 = [['七对', 3]]; common(l7); finish(l7); }
+    if (nM === 0 && orphans13(c)) { finish([['Thirteen Orphans', 10]].concat(zimo ? [['Self-draw', 1]] : [])); }
+    if (nM === 0 && sevenPairs(c)) { var l7 = [['Seven Pairs', 3]]; common(l7); finish(l7); }
     var ds = decompositions(c.slice());
     ds.forEach(function (d) {
-      var list = [['和牌', 1]]; common(list);
-      if (menqing) list.push(['门前清', 1]);
+      var list = [['Basic Win', 1]]; common(list);
+      if (menqing) list.push(['Concealed Hand', 1]);
       var sets = d.sets.slice(); melds.forEach(function (m) { sets.push(m.type === 'chi' ? { k: 'seq', t: m.tiles[0] } : { k: 'trip', t: m.tiles[0] }); });
       var allTrip = sets.every(function (x) { return x.k === 'trip'; }), allSeq = sets.every(function (x) { return x.k === 'seq'; });
       var pairVal = d.pair >= 31 || d.pair === seatWind || d.pair === roundWind;
-      if (allTrip) list.push(['碰碰胡', 2]);
-      if (allSeq && !pairVal) list.push(['平和', 1]);
-      var dr = 0; sets.forEach(function (x) { if (x.k === 'trip') { if (x.t >= 31) { dr++; list.push(['箭刻', 1]); } if (x.t === seatWind) list.push(['门风刻', 1]); if (x.t === roundWind) list.push(['圈风刻', 1]); } });
-      if (dr === 3) list.push(['大三元', 5]); else if (dr === 2 && d.pair >= 31) list.push(['小三元', 2]);
-      for (var su = 0; su < 3; su++) { var has = [0, 3, 6].every(function (o) { return sets.some(function (x) { return x.k === 'seq' && x.t === su * 9 + o; }); }); if (has) { list.push(['一条龙', 2]); break; } }
+      if (allTrip) list.push(['All Pongs', 2]);
+      if (allSeq && !pairVal) list.push(['All Chows', 1]);
+      var dr = 0; sets.forEach(function (x) { if (x.k === 'trip') { if (x.t >= 31) { dr++; list.push(['Dragon Pong', 1]); } if (x.t === seatWind) list.push(['Seat Wind Pong', 1]); if (x.t === roundWind) list.push(['Round Wind Pong', 1]); } });
+      if (dr === 3) list.push(['Big Three Dragons', 5]); else if (dr === 2 && d.pair >= 31) list.push(['Small Three Dragons', 2]);
+      for (var su = 0; su < 3; su++) { var has = [0, 3, 6].every(function (o) { return sets.some(function (x) { return x.k === 'seq' && x.t === su * 9 + o; }); }); if (has) { list.push(['Pure Straight', 2]); break; } }
       finish(list);
     });
-    return best || { fan: 1, items: [['和牌', 1]] };
+    return best || { fan: 1, items: [['Basic Win', 1]] };
   }
 
   /* ---- 状态机 ---- */
@@ -152,7 +152,7 @@
     s.afterKong = !!fromBack; ev(s, 'draw', seat, t); return true;
   }
   function endDraw(s) {
-    s.over = true; s.phase = 'over'; s.winner = 0; s.winners = []; s.reason = '流局(牌墙已摸完)'; s.result = { type: 'draw' }; s.claim = null; s.wallCount = s.wall.length; ev(s, 'drawgame', 0); return true;
+    s.over = true; s.phase = 'over'; s.winner = 0; s.winners = []; s.reason = 'Draw (the wall is exhausted)'; s.result = { type: 'draw' }; s.claim = null; s.wallCount = s.wall.length; ev(s, 'drawgame', 0); return true;
   }
   function settle(s, seat, zimo, from, c) {
     var last = s.wall.length <= 14;
@@ -162,7 +162,7 @@
     var p;
     if (zimo) { for (p = 1; p <= 4; p++) if (p !== seat) { s.scores[p] = -fan; s.scores[seat] += fan; } }
     else { s.scores[from] = -2 * fan; s.scores[seat] = 2 * fan; }
-    s.reason = (zimo ? '自摸' : '点炮胡') + ' ' + fan + ' 番:' + sc.items.map(function (x) { return x[0] + (x[1] > 1 ? x[1] : ''); }).join(' ');
+    s.reason = (zimo ? 'Self-draw' : 'Win on discard') + ' ' + fan + ' fan: ' + sc.items.map(function (x) { return x[0] + (x[1] > 1 ? x[1] : ''); }).join('; ');
     ev(s, zimo ? 'zimo' : 'hu', seat); s.wallCount = s.wall.length; return true;
   }
   function removeTiles(hand, tiles) { for (var i = 0; i < tiles.length; i++) { var k = hand.indexOf(tiles[i]); if (k < 0) return false; hand.splice(k, 1); } return true; }
@@ -184,23 +184,23 @@
     return null;
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '本局已结束' };
-    if (!mv || typeof mv.a !== 'string') return { ok: false, err: '操作无效' };
-    var o = options(s, seat); if (!o) return { ok: false, err: '还没轮到你' };
+    if (s.over) return { ok: false, err: 'The hand is over' };
+    if (!mv || typeof mv.a !== 'string') return { ok: false, err: 'Invalid action' };
+    var o = options(s, seat); if (!o) return { ok: false, err: 'Not your turn' };
     s.count++;
     var hand = s.hands[seat], c;
     if (s.phase === 'discard') {
       if (mv.a === 'discard') {
-        var t = mv.tile; if (!Number.isInteger(t) || hand.indexOf(t) < 0) return { ok: false, err: '你没有这张牌' };
+        var t = mv.tile; if (!Number.isInteger(t) || hand.indexOf(t) < 0) return { ok: false, err: 'You do not have that tile' };
         hand.splice(hand.indexOf(t), 1); s.discards[seat].push(t); s.lastDiscard = { seat: seat, tile: t }; s.drawn = -1; s.afterKong = false; ev(s, 'discard', seat, t);
         var q = computeClaims(s, seat, t);
         if (!q.length) { drawFor(s, next(seat)); return { ok: true, kind: s.over ? 'drawgame' : 'discard' }; }
         s.phase = 'claim'; s.claim = { tile: t, from: seat, queue: q }; s.turn = q[0].seat; return { ok: true, kind: 'discard' };
       }
-      if (mv.a === 'hu') { if (!o.hu) return { ok: false, err: '现在不能胡牌' }; settle(s, seat, true, 0, toCounts(hand)); return { ok: true, kind: 'zimo' }; }
-      if (mv.a === 'ankong') { if (o.ankong.indexOf(mv.tile) < 0) return { ok: false, err: '不能暗杠这张' }; removeTiles(hand, [mv.tile, mv.tile, mv.tile, mv.tile]); s.melds[seat].push({ type: 'ankong', tiles: [mv.tile, mv.tile, mv.tile, mv.tile], from: seat }); ev(s, 'kong', seat, mv.tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
-      if (mv.a === 'addkong') { if (o.addkong.indexOf(mv.tile) < 0) return { ok: false, err: '不能加杠这张' }; removeTiles(hand, [mv.tile]); s.melds[seat].forEach(function (m) { if (m.type === 'pong' && m.tiles[0] === mv.tile) { m.type = 'addkong'; m.tiles.push(mv.tile); } }); ev(s, 'kong', seat, mv.tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
-      return { ok: false, err: '现在必须出牌' };
+      if (mv.a === 'hu') { if (!o.hu) return { ok: false, err: 'You cannot win now' }; settle(s, seat, true, 0, toCounts(hand)); return { ok: true, kind: 'zimo' }; }
+      if (mv.a === 'ankong') { if (o.ankong.indexOf(mv.tile) < 0) return { ok: false, err: 'Cannot make a concealed kong with that' }; removeTiles(hand, [mv.tile, mv.tile, mv.tile, mv.tile]); s.melds[seat].push({ type: 'ankong', tiles: [mv.tile, mv.tile, mv.tile, mv.tile], from: seat }); ev(s, 'kong', seat, mv.tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
+      if (mv.a === 'addkong') { if (o.addkong.indexOf(mv.tile) < 0) return { ok: false, err: 'Cannot add a kong with that' }; removeTiles(hand, [mv.tile]); s.melds[seat].forEach(function (m) { if (m.type === 'pong' && m.tiles[0] === mv.tile) { m.type = 'addkong'; m.tiles.push(mv.tile); } }); ev(s, 'kong', seat, mv.tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
+      return { ok: false, err: 'You must discard now' };
     }
     // claim 阶段
     var cl = s.claim, tile = cl.tile, from = cl.from;
@@ -209,17 +209,17 @@
       if (!cl.queue.length) { drawFor(s, next(from)); return { ok: true, kind: 'pass' }; }
       s.turn = cl.queue[0].seat; s.seq++; return { ok: true, kind: 'pass' };
     }
-    if (mv.a === 'hu') { if (!o.hu) return { ok: false, err: '现在不能胡牌' }; c = toCounts(hand); c[tile]++; s.discards[from].pop(); settle(s, seat, false, from, c); return { ok: true, kind: 'hu' }; }
-    if (mv.a === 'pong') { if (!o.pong) return { ok: false, err: '不能碰' }; removeTiles(hand, [tile, tile]); s.discards[from].pop(); s.melds[seat].push({ type: 'pong', tiles: [tile, tile, tile], from: from }); return afterClaim(s, seat, 'pong', tile); }
-    if (mv.a === 'kong') { if (!o.kong) return { ok: false, err: '不能杠' }; removeTiles(hand, [tile, tile, tile]); s.discards[from].pop(); s.melds[seat].push({ type: 'kong', tiles: [tile, tile, tile, tile], from: from }); s.claim = null; s.lastDiscard = null; ev(s, 'kong', seat, tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
+    if (mv.a === 'hu') { if (!o.hu) return { ok: false, err: 'You cannot win now' }; c = toCounts(hand); c[tile]++; s.discards[from].pop(); settle(s, seat, false, from, c); return { ok: true, kind: 'hu' }; }
+    if (mv.a === 'pong') { if (!o.pong) return { ok: false, err: 'Cannot pong' }; removeTiles(hand, [tile, tile]); s.discards[from].pop(); s.melds[seat].push({ type: 'pong', tiles: [tile, tile, tile], from: from }); return afterClaim(s, seat, 'pong', tile); }
+    if (mv.a === 'kong') { if (!o.kong) return { ok: false, err: 'Cannot kong' }; removeTiles(hand, [tile, tile, tile]); s.discards[from].pop(); s.melds[seat].push({ type: 'kong', tiles: [tile, tile, tile, tile], from: from }); s.claim = null; s.lastDiscard = null; ev(s, 'kong', seat, tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
     if (mv.a === 'chi') {
-      var pair = mv.tiles; if (!Array.isArray(pair) || !o.chi || !o.chi.some(function (x) { return pair.length === 2 && x[0] === pair[0] && x[1] === pair[1]; })) return { ok: false, err: '不能这样吃' };
+      var pair = mv.tiles; if (!Array.isArray(pair) || !o.chi || !o.chi.some(function (x) { return pair.length === 2 && x[0] === pair[0] && x[1] === pair[1]; })) return { ok: false, err: 'Cannot chow that way' };
       removeTiles(hand, pair); s.discards[from].pop(); s.melds[seat].push({ type: 'chi', tiles: sortTiles([pair[0], pair[1], tile]), from: from }); return afterClaim(s, seat, 'chi', tile);
     }
-    return { ok: false, err: '操作无效' };
+    return { ok: false, err: 'Invalid action' };
   }
   function afterClaim(s, seat, kind, tile) { s.phase = 'discard'; s.turn = seat; s.claim = null; s.drawn = -1; s.afterKong = false; s.lastDiscard = null; ev(s, kind, seat, tile); return { ok: true, kind: kind }; }
-  function resign(s, seat) { if (s.over) return; s.over = true; s.phase = 'over'; s.winner = 0; s.winners = []; s.reason = '有人离开,本局作废'; s.result = { type: 'abort' }; }
+  function resign(s, seat) { if (s.over) return; s.over = true; s.phase = 'over'; s.winner = 0; s.winners = []; s.reason = 'A player left - hand void'; s.result = { type: 'abort' }; }
   function view(s, seat) {
     var v = {};
     for (var k in s) if (k !== 'wall' && k !== 'hands' && k !== 'claim') v[k] = s[k];
@@ -229,7 +229,7 @@
     if (s.claim) { var q = s.claim.queue ? s.claim.queue[0] : null; v.claim = { tile: s.claim.tile, from: s.claim.from, actor: q ? q.seat : s.claim.actor, opts: q && q.seat === seat ? q.opts : (s.claim.actor === seat ? s.claim.opts : null) }; } else v.claim = null;
     return v;
   }
-  var API = { id: 'mahjong', name: '麻将', nSeats: 4, KN: KN, newGame: newGame, move: move, resign: resign, view: view, options: options, canWin: canWin, shanten: shanten, toCounts: toCounts, scoreHand: scoreHand,
+  var API = { id: 'mahjong', name: 'Mahjong', nSeats: 4, KN: KN, newGame: newGame, move: move, resign: resign, view: view, options: options, canWin: canWin, shanten: shanten, toCounts: toCounts, scoreHand: scoreHand,
     isHonor: isHonor, suitOf: suitOf, isSimple: isSimple, chiOptions: chiOptions, sortTiles: sortTiles, ORPHANS: ORPHANS, decompositions: decompositions, next: next };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Mahjong = API;
 })();

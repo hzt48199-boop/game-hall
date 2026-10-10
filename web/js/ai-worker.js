@@ -28,21 +28,21 @@
     return null;
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '游戏已结束' };
-    if (seat !== s.turn) return { ok: false, err: '还没轮到你' };
-    if (!mv || !Number.isInteger(mv.x) || !Number.isInteger(mv.y) || !inb(mv.x, mv.y)) return { ok: false, err: '落子位置无效' };
-    if (s.board[mv.y * N + mv.x] !== 0) return { ok: false, err: '这里已经有棋子' };
+    if (s.over) return { ok: false, err: 'The game is over' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
+    if (!mv || !Number.isInteger(mv.x) || !Number.isInteger(mv.y) || !inb(mv.x, mv.y)) return { ok: false, err: 'Invalid position' };
+    if (s.board[mv.y * N + mv.x] !== 0) return { ok: false, err: 'That point is already taken' };
     s.board[mv.y * N + mv.x] = seat;
     s.moves.push({ x: mv.x, y: mv.y, p: seat });
     var line = findLine(s.board, mv.x, mv.y, seat);
-    if (line) { s.over = true; s.winner = seat; s.winLine = line; s.reason = line.length > 5 ? '长连获胜' : '五连获胜'; }
-    else if (s.moves.length >= N * N) { s.over = true; s.winner = 3; s.reason = '棋盘已满,和棋'; }
+    if (line) { s.over = true; s.winner = seat; s.winLine = line; s.reason = line.length > 5 ? 'Wins with an overline' : 'Wins with five in a row'; }
+    else if (s.moves.length >= N * N) { s.over = true; s.winner = 3; s.reason = 'Board full - draw'; }
     else s.turn = 3 - seat;
     return { ok: true };
   }
-  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = '对方认输/离开'; }
+  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = 'Opponent resigned / left'; }
   function view(s) { return s; }
-  var API = { id: 'gomoku', name: '五子棋', N: N, newGame: newGame, move: move, resign: resign, view: view, findLine: findLine, inb: inb };
+  var API = { id: 'gomoku', name: 'Gomoku', N: N, newGame: newGame, move: move, resign: resign, view: view, findLine: findLine, inb: inb };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Gomoku = API;
 })();
 
@@ -190,21 +190,21 @@
     for (i = j + 1; i <= n; i++) { var e = h[i]; cnt[e.p]++; if (!e.chk) all[e.p].chk = false; if (!e.chk && !e.chs) all[e.p].chase = false; }
     var a = 3 - seat; // 对手
     var chkS = all[seat].chk && cnt[seat] > 0, chkO = all[a].chk && cnt[a] > 0;
-    if (chkS && !chkO) return { winner: a, reason: '长将判负(将军方负)' };
-    if (chkO && !chkS) return { winner: seat, reason: '长将判负(将军方负)' };
-    if (chkS && chkO) return { winner: 3, reason: '双方长将,和棋' };
+    if (chkS && !chkO) return { winner: a, reason: 'Perpetual check - the checking side loses' };
+    if (chkO && !chkS) return { winner: seat, reason: 'Perpetual check - the checking side loses' };
+    if (chkS && chkO) return { winner: 3, reason: 'Both sides perpetually checking - draw' };
     var chsS = all[seat].chase && cnt[seat] > 0, chsO = all[a].chase && cnt[a] > 0;
-    if (chsS && !chsO) return { winner: a, reason: '长捉判负(捉子方负)' };
-    if (chsO && !chsS) return { winner: seat, reason: '长捉判负(捉子方负)' };
-    return { winner: 3, reason: '同一局面重复三次,和棋' };
+    if (chsS && !chsO) return { winner: a, reason: 'Perpetual chase - the chasing side loses' };
+    if (chsO && !chsS) return { winner: seat, reason: 'Perpetual chase - the chasing side loses' };
+    return { winner: 3, reason: 'Position repeated three times - draw' };
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '游戏已结束' };
-    if (seat !== s.turn) return { ok: false, err: '还没轮到你' };
-    if (!mv || ['fr', 'fc', 'tr', 'tc'].some(function (k) { return !Number.isInteger(mv[k]); })) return { ok: false, err: '走法无效' };
+    if (s.over) return { ok: false, err: 'The game is over' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
+    if (!mv || ['fr', 'fc', 'tr', 'tc'].some(function (k) { return !Number.isInteger(mv[k]); })) return { ok: false, err: 'Invalid move' };
     var legal = legalMoves(s.board, seat), found = null;
     for (var i = 0; i < legal.length; i++) { var m = legal[i]; if (m.fr === mv.fr && m.fc === mv.fc && m.tr === mv.tr && m.tc === mv.tc) { found = m; break; } }
-    if (!found) return { ok: false, err: '不符合规则的走法' };
+    if (!found) return { ok: false, err: 'Illegal move' };
     var cap = s.board[mv.tr][mv.tc];
     s.board[mv.tr][mv.tc] = s.board[mv.fr][mv.fc]; s.board[mv.fr][mv.fc] = null;
     s.last = { fr: mv.fr, fc: mv.fc, tr: mv.tr, tc: mv.tc, p: seat };
@@ -218,19 +218,19 @@
     s.hist.push({ k: posKey(s.board, opp), p: seat, chk: s.check, chs: chased });
     var rep = oppMoves.length ? judgeRepeat(s, seat) : null;
     if (rep) { s.over = true; s.winner = rep.winner; s.reason = rep.reason; }
-    else if (oppMoves.length === 0) { s.over = true; s.winner = seat; s.reason = s.check ? '将死' : '困毙(无子可动)'; }
-    else if (s.noCap >= 120) { s.over = true; s.winner = 3; s.reason = '六十回合无吃子,和棋'; }
+    else if (oppMoves.length === 0) { s.over = true; s.winner = seat; s.reason = s.check ? 'Checkmate' : 'Stalemate (no legal move) - loss'; }
+    else if (s.noCap >= 120) { s.over = true; s.winner = 3; s.reason = 'Sixty moves without a capture - draw'; }
     else s.turn = opp;
     return { ok: true, capture: cap, check: s.check };
   }
-  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = '对方认输/离开'; }
+  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = 'Opponent resigned / left'; }
   function view(s) { var v = {}; for (var k in s) if (k !== 'hist') v[k] = s[k]; return v; }
   // 若 seat 走 mv 会被规则判负(长将/长捉),返回 true(用于 AI 避让)
   function wouldLoseByRule(s, seat, mv) {
     var c = { board: s.board.map(function (r) { return r.slice(); }), turn: s.turn, winner: 0, over: false, reason: '', check: false, noCap: s.noCap, count: s.count, last: s.last, moves: s.moves.slice(), hist: s.hist.slice() };
-    var r = move(c, seat, mv); return !!(r.ok && c.over && c.winner === 3 - seat && /长/.test(c.reason));
+    var r = move(c, seat, mv); return !!(r.ok && c.over && c.winner === 3 - seat && /Perpetual/.test(c.reason));
   }
-  var API = { id: 'xiangqi', wouldLoseByRule: wouldLoseByRule, judgeRepeat: judgeRepeat, name: '中国象棋', ROWS: ROWS, COLS: COLS, newGame: newGame, move: move, resign: resign, view: view,
+  var API = { id: 'xiangqi', wouldLoseByRule: wouldLoseByRule, judgeRepeat: judgeRepeat, name: 'Chinese Chess', ROWS: ROWS, COLS: COLS, newGame: newGame, move: move, resign: resign, view: view,
     pseudoMoves: pseudoMoves, legalMoves: legalMoves, legalMovesFrom: legalMovesFrom, inCheck: inCheck, findKing: findKing, sideOf: sideOf, initialBoard: initialBoard };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Xiangqi = API;
 })();
@@ -242,10 +242,10 @@
 (function () {
   var ROWS = 12, COLS = 5;
   var TYPES = {
-    S: { n: '司令', r: 9, c: 1, v: 100 }, J: { n: '军长', r: 8, c: 1, v: 80 }, D: { n: '师长', r: 7, c: 2, v: 70 },
-    R: { n: '旅长', r: 6, c: 2, v: 60 }, T: { n: '团长', r: 5, c: 2, v: 50 }, B: { n: '营长', r: 4, c: 2, v: 40 },
-    C: { n: '连长', r: 3, c: 3, v: 30 }, L: { n: '排长', r: 2, c: 3, v: 20 }, E: { n: '工兵', r: 1, c: 3, v: 25 },
-    X: { n: '炸弹', r: 0, c: 2, v: 45 }, M: { n: '地雷', r: 0, c: 3, v: 30 }, F: { n: '军旗', r: 0, c: 1, v: 1000 }
+    S: { n: 'Marshal', r: 9, c: 1, v: 100 }, J: { n: 'General', r: 8, c: 1, v: 80 }, D: { n: 'Maj. General', r: 7, c: 2, v: 70 },
+    R: { n: 'Brigadier', r: 6, c: 2, v: 60 }, T: { n: 'Colonel', r: 5, c: 2, v: 50 }, B: { n: 'Major', r: 4, c: 2, v: 40 },
+    C: { n: 'Captain', r: 3, c: 3, v: 30 }, L: { n: 'Lieutenant', r: 2, c: 3, v: 20 }, E: { n: 'Engineer', r: 1, c: 3, v: 25 },
+    X: { n: 'Bomb', r: 0, c: 2, v: 45 }, M: { n: 'Mine', r: 0, c: 3, v: 30 }, F: { n: 'Flag', r: 0, c: 1, v: 1000 }
   };
   var CAMPS = {}; [[2, 1], [2, 3], [3, 2], [4, 1], [4, 3], [9, 1], [9, 3], [8, 2], [7, 1], [7, 3]].forEach(function (p) { CAMPS[p[0] * 5 + p[1]] = 1; });
   var HQS = {}; [[0, 1], [0, 3], [11, 1], [11, 3]].forEach(function (p) { HQS[p[0] * 5 + p[1]] = 1; });
@@ -307,8 +307,8 @@
     return { game: 'luzhanqi', phase: 'setup', board: b, layouts: [null, null, null], ready: [false, false], turn: 1, winner: 0, over: false, reason: '', dead: [], last: null, count: 0, info: null, log: [] };
   }
   function setup(s, seat, layout) {
-    if (s.phase !== 'setup') return { ok: false, err: '现在不是布阵阶段' };
-    if (!validLayout(layout)) return { ok: false, err: '布阵不合法(军旗须在大本营、地雷在后两排、炸弹不在第一排)' };
+    if (s.phase !== 'setup') return { ok: false, err: 'Not in the setup phase' };
+    if (!validLayout(layout)) return { ok: false, err: 'Invalid setup (flag in a headquarters, mines in the back two rows, bombs not in the front row)' };
     s.layouts[seat] = layout.slice(); s.ready[seat - 1] = true;
     if (s.layouts[1] && s.layouts[2]) {
       [1, 2].forEach(function (p) {
@@ -387,14 +387,14 @@
     return ra > rd ? 'win' : ra === rd ? 'both' : 'lose';
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '游戏已结束' };
-    if (s.phase !== 'playing') return { ok: false, err: '还在布阵阶段' };
-    if (seat !== s.turn) return { ok: false, err: '还没轮到你' };
-    if (!mv || ['fr', 'fc', 'tr', 'tc'].some(function (k) { return !Number.isInteger(mv[k]); }) || !inb(mv.fr, mv.fc) || !inb(mv.tr, mv.tc)) return { ok: false, err: '走法无效' };
+    if (s.over) return { ok: false, err: 'The game is over' };
+    if (s.phase !== 'playing') return { ok: false, err: 'Still in the setup phase' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
+    if (!mv || ['fr', 'fc', 'tr', 'tc'].some(function (k) { return !Number.isInteger(mv[k]); }) || !inb(mv.fr, mv.fc) || !inb(mv.tr, mv.tc)) return { ok: false, err: 'Invalid move' };
     var att = s.board[mv.fr][mv.fc];
-    if (!att || att.p !== seat) return { ok: false, err: '这不是你的棋子' };
+    if (!att || att.p !== seat) return { ok: false, err: 'That is not your piece' };
     var ok = movesFrom(s.board, mv.fr, mv.fc).some(function (m) { return m.tr === mv.tr && m.tc === mv.tc; });
-    if (!ok) return { ok: false, err: '不符合规则的走法' };
+    if (!ok) return { ok: false, err: 'Illegal move' };
     var def = s.board[mv.tr][mv.tc], outcome = 'move';
     s.board[mv.fr][mv.fc] = null;
     if (!def) { s.board[mv.tr][mv.tc] = att; att.mv = true; }
@@ -411,14 +411,14 @@
     s.log.push({ p: seat, fr: mv.fr, fc: mv.fc, tr: mv.tr, tc: mv.tc, out: def ? outcome : 'move',
       da: def && (outcome === 'lose' || outcome === 'both') ? att.t : null, dd: def && (outcome === 'win' || outcome === 'flag' || outcome === 'both') ? def.t : null });
     var opp = 3 - seat;
-    if (outcome === 'flag') { s.over = true; s.winner = seat; s.reason = '夺取军旗'; }
-    else if (legalMoves(s, opp).length === 0) { s.over = true; s.winner = seat; s.reason = '对方无子可动'; }
-    else if (legalMoves(s, seat).length === 0) { s.over = true; s.winner = opp; s.reason = '己方无子可动'; }
-    else if (s.count >= 600) { s.over = true; s.winner = 3; s.reason = '步数过多,和棋'; }
+    if (outcome === 'flag') { s.over = true; s.winner = seat; s.reason = 'Flag captured'; }
+    else if (legalMoves(s, opp).length === 0) { s.over = true; s.winner = seat; s.reason = 'The opponent has no movable piece'; }
+    else if (legalMoves(s, seat).length === 0) { s.over = true; s.winner = opp; s.reason = 'You have no movable piece'; }
+    else if (s.count >= 600) { s.over = true; s.winner = 3; s.reason = 'Too many moves - draw'; }
     else s.turn = opp;
     return { ok: true, outcome: outcome, info: s.info };
   }
-  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = '对方认输/离开'; }
+  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = 'Opponent resigned / left'; }
   // 对座位 seat 隐藏对方棋子身份(结束后全部公开)
   function view(s, seat) {
     var v = JSON.parse(JSON.stringify(s));
@@ -431,7 +431,7 @@
     if (!s.over) for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var p = v.board[r][c]; if (p && p.p !== seat) p.t = '?'; }
     return v;
   }
-  var API = { id: 'luzhanqi', name: '军棋', ROWS: ROWS, COLS: COLS, TYPES: TYPES, COUNTS: COUNTS, STATIONS: STATIONS, newGame: newGame, setup: setup, move: move, resign: resign, view: view,
+  var API = { id: 'luzhanqi', name: 'Luzhanqi', ROWS: ROWS, COLS: COLS, TYPES: TYPES, COUNTS: COUNTS, STATIONS: STATIONS, newGame: newGame, setup: setup, move: move, resign: resign, view: view,
     legalMoves: legalMoves, legalMovesFrom: legalMovesFrom, movesFrom: movesFrom, battle: battle, validLayout: validLayout, randomLayout: randomLayout, absPos: absPos,
     isCamp: isCamp, isHQ: isHQ, railNode: railNode, railEdge: railEdge };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Luzhanqi = API;
@@ -444,7 +444,7 @@
    牌型: 单张 对子 三张 三带一 三带二 顺子(>=5) 连对(>=3) 飞机(>=2 个连续三张,可带同数量单张或对子) 四带二(两单/两对) 炸弹 火箭。
    计分: 底分 × 叫分 × 2^(炸弹数+火箭数) × (春天/反春 ×2);地主赢两个农民各付、输各得。 */
 (function () {
-  var NAMES = { 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10', 11: 'J', 12: 'Q', 13: 'K', 14: 'A', 15: '2', 16: '小王', 17: '大王' };
+  var NAMES = { 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10', 11: 'J', 12: 'Q', 13: 'K', 14: 'A', 15: '2', 16: 'Small Joker', 17: 'Big Joker' };
   function rankOf(id) { return id < 52 ? 3 + (id >> 2) : 16 + (id - 52); }
   function suitOf(id) { return id < 52 ? id & 3 : 4; }
   function sortHand(h) { return h.sort(function (a, b) { return rankOf(b) - rankOf(a) || a - b; }); }
@@ -542,16 +542,16 @@
     for (q = 1; q <= 3; q++) {
       if (q === ll) s.scores[q] = landlordWin ? 2 * per : -2 * per; else s.scores[q] = landlordWin ? -per : per;
     }
-    s.reason = (landlordWin ? '地主获胜' : '农民获胜') + (spring ? (landlordWin ? '(春天 ×2)' : '(反春 ×2)') : '') + ',倍数 ' + s.finalMult;
+    s.reason = (landlordWin ? 'Landlord wins' : 'Farmers win') + (spring ? (landlordWin ? ' (Spring x2)' : ' (Reverse spring x2)') : '') + ', multiplier ' + s.finalMult;
     s.event = { t: 'win', seat: winSeat }; s.seq++;
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '本局已结束' };
-    if (seat !== s.turn) return { ok: false, err: '还没轮到你' };
-    if (!mv || typeof mv !== 'object') return { ok: false, err: '操作无效' };
+    if (s.over) return { ok: false, err: 'The hand is over' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
+    if (!mv || typeof mv !== 'object') return { ok: false, err: 'Invalid action' };
     if (s.phase === 'bid') {
-      var b = mv.bid; if (!Number.isInteger(b) || b < 0 || b > 3) return { ok: false, err: '叫分无效' };
-      if (b !== 0 && b <= s.bid.high) return { ok: false, err: '叫分必须高于当前的 ' + s.bid.high + ' 分' };
+      var b = mv.bid; if (!Number.isInteger(b) || b < 0 || b > 3) return { ok: false, err: 'Invalid bid' };
+      if (b !== 0 && b <= s.bid.high) return { ok: false, err: 'Bid must be higher than ' + s.bid.high };
       s.bid.bids[seat] = b; s.bid.count++; if (b > 0) { s.bid.high = b; s.bid.highSeat = seat; }
       s.event = { t: 'bid', seat: seat, v: b }; s.seq++;
       if (b === 3 || s.bid.count >= 3) {
@@ -567,16 +567,16 @@
     }
     // 出牌阶段
     if (mv.pass) {
-      if (!s.last) return { ok: false, err: '你是首家,必须出牌' };
+      if (!s.last) return { ok: false, err: 'You lead - you must play' };
       s.passes++; s.plays.push({ seat: seat, pass: true }); s.event = { t: 'pass', seat: seat }; s.seq++;
       if (s.passes >= 2) { s.last = null; s.passes = 0; }
       s.turn = seat % 3 + 1; return { ok: true, kind: 'pass' };
     }
-    var cards = mv.cards; if (!Array.isArray(cards) || !cards.length || cards.length > 20 || cards.some(function (x) { return !Number.isInteger(x) || x < 0 || x > 53; })) return { ok: false, err: '出牌无效' };
-    if (new Set(cards).size !== cards.length) return { ok: false, err: '出牌无效' };
-    var rest = removeCards(s.hands[seat], cards); if (!rest) return { ok: false, err: '你没有这些牌' };
-    var cl = classify(cards); if (!cl) return { ok: false, err: '不是合法牌型' };
-    if (s.last && !beats(cl, s.last.cl)) return { ok: false, err: '压不过上一手' };
+    var cards = mv.cards; if (!Array.isArray(cards) || !cards.length || cards.length > 20 || cards.some(function (x) { return !Number.isInteger(x) || x < 0 || x > 53; })) return { ok: false, err: 'Invalid play' };
+    if (new Set(cards).size !== cards.length) return { ok: false, err: 'Invalid play' };
+    var rest = removeCards(s.hands[seat], cards); if (!rest) return { ok: false, err: 'You do not have those cards' };
+    var cl = classify(cards); if (!cl) return { ok: false, err: 'Not a valid combination' };
+    if (s.last && !beats(cl, s.last.cl)) return { ok: false, err: 'That does not beat the last play' };
     var wasLast = !!s.last;
     s.hands[seat] = rest; s.counts[seat] = rest.length; s.playedCount[seat]++;
     s.last = { seat: seat, cards: sortHand(cards.slice()), cl: cl }; s.passes = 0;
@@ -587,7 +587,7 @@
     if (!rest.length) { finish(s, seat); return { ok: true, kind: 'win' }; }
     s.turn = seat % 3 + 1; return { ok: true, kind: kind };
   }
-  function resign(s, seat) { if (s.over) return; if (s.phase === 'bid') { s.over = true; s.phase = 'over'; s.reason = '有人离开'; s.winners = []; return; } var ll = s.landlord; finish(s, seat === ll ? (ll % 3 + 1) : ll); s.reason = '有人离开,' + s.reason; }
+  function resign(s, seat) { if (s.over) return; if (s.phase === 'bid') { s.over = true; s.phase = 'over'; s.reason = 'A player left'; s.winners = []; return; } var ll = s.landlord; finish(s, seat === ll ? (ll % 3 + 1) : ll); s.reason = 'A player left, ' + s.reason; }
   /* 视角: 只显示自己的手牌;其他人只给张数;地主确定后底牌公开 */
   function view(s, seat) {
     var v = {};
@@ -633,7 +633,7 @@
     if (g[16] && g[17]) add([g[16][0], g[17][0]]);
     return out;
   }
-  var API = { id: 'doudizhu', name: '斗地主', nSeats: 3, NAMES: NAMES, rankOf: rankOf, suitOf: suitOf, sortHand: sortHand, classify: classify, beats: beats, newGame: newGame, move: move, resign: resign, view: view,
+  var API = { id: 'doudizhu', name: 'Dou Dizhu', nSeats: 3, NAMES: NAMES, rankOf: rankOf, suitOf: suitOf, sortHand: sortHand, classify: classify, beats: beats, newGame: newGame, move: move, resign: resign, view: view,
     genMoves: genMoves, groupByRank: groupByRank, counts: counts, removeCards: removeCards, shuffleDeck: shuffleDeck };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Doudizhu = API;
 })();
@@ -645,7 +645,7 @@
    不设起胡番数(任何成牌即可胡,底 1 番);庄家(座位 dealer)先摸第 14 张;牌墙留 14 张,摸完即流局;不设抢杠胡、不设振听、一炮只能一人胡(按顺位)。
    状态机: phase 'discard'(turn 摸牌后须打出一张,或自摸/杠) → 'claim'(依次询问可胡/碰杠/吃的玩家) → 'over'。 */
 (function () {
-  var KN = ['一万', '二万', '三万', '四万', '五万', '六万', '七万', '八万', '九万', '一筒', '二筒', '三筒', '四筒', '五筒', '六筒', '七筒', '八筒', '九筒', '一条', '二条', '三条', '四条', '五条', '六条', '七条', '八条', '九条', '东', '南', '西', '北', '中', '发', '白'];
+  var KN = ['1 Char', '2 Char', '3 Char', '4 Char', '5 Char', '6 Char', '7 Char', '8 Char', '9 Char', '1 Dot', '2 Dot', '3 Dot', '4 Dot', '5 Dot', '6 Dot', '7 Dot', '8 Dot', '9 Dot', '1 Bam', '2 Bam', '3 Bam', '4 Bam', '5 Bam', '6 Bam', '7 Bam', '8 Bam', '9 Bam', 'East', 'South', 'West', 'North', 'Red Dragon', 'Green Dragon', 'White Dragon'];
   var ORPHANS = [0, 8, 9, 17, 18, 26, 27, 28, 29, 30, 31, 32, 33];
   function isHonor(k) { return k >= 27; }
   function suitOf(k) { return k < 27 ? Math.floor(k / 9) : 3; }
@@ -726,30 +726,30 @@
     function common(list) {
       var suits = {}, honors = 0, any = 0; for (var k = 0; k < 34; k++) if (all[k]) { any++; if (k >= 27) honors++; else suits[suitOf(k)] = 1; }
       var ns = Object.keys(suits).length;
-      if (ns === 0) list.push(['字一色', 6]); else if (ns === 1 && honors === 0) list.push(['清一色', 4]); else if (ns === 1) list.push(['混一色', 2]);
-      var simple = true; for (var q = 0; q < 34; q++) if (all[q] && !isSimple(q)) simple = false; if (simple) list.push(['断幺', 1]);
-      if (zimo) list.push(['自摸', 1]);
-      melds.forEach(function (m) { if (m.type === 'ankong') list.push(['暗杠', 2]); else if (m.type === 'kong' || m.type === 'addkong') list.push(['明杠', 1]); });
-      if (zimo && s.afterKong) list.push(['杠上开花', 1]);
-      if (lastTile) list.push([zimo ? '海底捞月' : '河底捞鱼', 1]);
+      if (ns === 0) list.push(['All Honors', 6]); else if (ns === 1 && honors === 0) list.push(['Full Flush', 4]); else if (ns === 1) list.push(['Half Flush', 2]);
+      var simple = true; for (var q = 0; q < 34; q++) if (all[q] && !isSimple(q)) simple = false; if (simple) list.push(['All Simples', 1]);
+      if (zimo) list.push(['Self-draw', 1]);
+      melds.forEach(function (m) { if (m.type === 'ankong') list.push(['Concealed Kong', 2]); else if (m.type === 'kong' || m.type === 'addkong') list.push(['Exposed Kong', 1]); });
+      if (zimo && s.afterKong) list.push(['Win after Kong', 1]);
+      if (lastTile) list.push([zimo ? 'Last Tile Draw' : 'Last Discard Win', 1]);
     }
-    if (nM === 0 && orphans13(c)) { finish([['十三幺', 10]].concat(zimo ? [['自摸', 1]] : [])); }
-    if (nM === 0 && sevenPairs(c)) { var l7 = [['七对', 3]]; common(l7); finish(l7); }
+    if (nM === 0 && orphans13(c)) { finish([['Thirteen Orphans', 10]].concat(zimo ? [['Self-draw', 1]] : [])); }
+    if (nM === 0 && sevenPairs(c)) { var l7 = [['Seven Pairs', 3]]; common(l7); finish(l7); }
     var ds = decompositions(c.slice());
     ds.forEach(function (d) {
-      var list = [['和牌', 1]]; common(list);
-      if (menqing) list.push(['门前清', 1]);
+      var list = [['Basic Win', 1]]; common(list);
+      if (menqing) list.push(['Concealed Hand', 1]);
       var sets = d.sets.slice(); melds.forEach(function (m) { sets.push(m.type === 'chi' ? { k: 'seq', t: m.tiles[0] } : { k: 'trip', t: m.tiles[0] }); });
       var allTrip = sets.every(function (x) { return x.k === 'trip'; }), allSeq = sets.every(function (x) { return x.k === 'seq'; });
       var pairVal = d.pair >= 31 || d.pair === seatWind || d.pair === roundWind;
-      if (allTrip) list.push(['碰碰胡', 2]);
-      if (allSeq && !pairVal) list.push(['平和', 1]);
-      var dr = 0; sets.forEach(function (x) { if (x.k === 'trip') { if (x.t >= 31) { dr++; list.push(['箭刻', 1]); } if (x.t === seatWind) list.push(['门风刻', 1]); if (x.t === roundWind) list.push(['圈风刻', 1]); } });
-      if (dr === 3) list.push(['大三元', 5]); else if (dr === 2 && d.pair >= 31) list.push(['小三元', 2]);
-      for (var su = 0; su < 3; su++) { var has = [0, 3, 6].every(function (o) { return sets.some(function (x) { return x.k === 'seq' && x.t === su * 9 + o; }); }); if (has) { list.push(['一条龙', 2]); break; } }
+      if (allTrip) list.push(['All Pongs', 2]);
+      if (allSeq && !pairVal) list.push(['All Chows', 1]);
+      var dr = 0; sets.forEach(function (x) { if (x.k === 'trip') { if (x.t >= 31) { dr++; list.push(['Dragon Pong', 1]); } if (x.t === seatWind) list.push(['Seat Wind Pong', 1]); if (x.t === roundWind) list.push(['Round Wind Pong', 1]); } });
+      if (dr === 3) list.push(['Big Three Dragons', 5]); else if (dr === 2 && d.pair >= 31) list.push(['Small Three Dragons', 2]);
+      for (var su = 0; su < 3; su++) { var has = [0, 3, 6].every(function (o) { return sets.some(function (x) { return x.k === 'seq' && x.t === su * 9 + o; }); }); if (has) { list.push(['Pure Straight', 2]); break; } }
       finish(list);
     });
-    return best || { fan: 1, items: [['和牌', 1]] };
+    return best || { fan: 1, items: [['Basic Win', 1]] };
   }
 
   /* ---- 状态机 ---- */
@@ -793,7 +793,7 @@
     s.afterKong = !!fromBack; ev(s, 'draw', seat, t); return true;
   }
   function endDraw(s) {
-    s.over = true; s.phase = 'over'; s.winner = 0; s.winners = []; s.reason = '流局(牌墙已摸完)'; s.result = { type: 'draw' }; s.claim = null; s.wallCount = s.wall.length; ev(s, 'drawgame', 0); return true;
+    s.over = true; s.phase = 'over'; s.winner = 0; s.winners = []; s.reason = 'Draw (the wall is exhausted)'; s.result = { type: 'draw' }; s.claim = null; s.wallCount = s.wall.length; ev(s, 'drawgame', 0); return true;
   }
   function settle(s, seat, zimo, from, c) {
     var last = s.wall.length <= 14;
@@ -803,7 +803,7 @@
     var p;
     if (zimo) { for (p = 1; p <= 4; p++) if (p !== seat) { s.scores[p] = -fan; s.scores[seat] += fan; } }
     else { s.scores[from] = -2 * fan; s.scores[seat] = 2 * fan; }
-    s.reason = (zimo ? '自摸' : '点炮胡') + ' ' + fan + ' 番:' + sc.items.map(function (x) { return x[0] + (x[1] > 1 ? x[1] : ''); }).join(' ');
+    s.reason = (zimo ? 'Self-draw' : 'Win on discard') + ' ' + fan + ' fan: ' + sc.items.map(function (x) { return x[0] + (x[1] > 1 ? x[1] : ''); }).join('; ');
     ev(s, zimo ? 'zimo' : 'hu', seat); s.wallCount = s.wall.length; return true;
   }
   function removeTiles(hand, tiles) { for (var i = 0; i < tiles.length; i++) { var k = hand.indexOf(tiles[i]); if (k < 0) return false; hand.splice(k, 1); } return true; }
@@ -825,23 +825,23 @@
     return null;
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '本局已结束' };
-    if (!mv || typeof mv.a !== 'string') return { ok: false, err: '操作无效' };
-    var o = options(s, seat); if (!o) return { ok: false, err: '还没轮到你' };
+    if (s.over) return { ok: false, err: 'The hand is over' };
+    if (!mv || typeof mv.a !== 'string') return { ok: false, err: 'Invalid action' };
+    var o = options(s, seat); if (!o) return { ok: false, err: 'Not your turn' };
     s.count++;
     var hand = s.hands[seat], c;
     if (s.phase === 'discard') {
       if (mv.a === 'discard') {
-        var t = mv.tile; if (!Number.isInteger(t) || hand.indexOf(t) < 0) return { ok: false, err: '你没有这张牌' };
+        var t = mv.tile; if (!Number.isInteger(t) || hand.indexOf(t) < 0) return { ok: false, err: 'You do not have that tile' };
         hand.splice(hand.indexOf(t), 1); s.discards[seat].push(t); s.lastDiscard = { seat: seat, tile: t }; s.drawn = -1; s.afterKong = false; ev(s, 'discard', seat, t);
         var q = computeClaims(s, seat, t);
         if (!q.length) { drawFor(s, next(seat)); return { ok: true, kind: s.over ? 'drawgame' : 'discard' }; }
         s.phase = 'claim'; s.claim = { tile: t, from: seat, queue: q }; s.turn = q[0].seat; return { ok: true, kind: 'discard' };
       }
-      if (mv.a === 'hu') { if (!o.hu) return { ok: false, err: '现在不能胡牌' }; settle(s, seat, true, 0, toCounts(hand)); return { ok: true, kind: 'zimo' }; }
-      if (mv.a === 'ankong') { if (o.ankong.indexOf(mv.tile) < 0) return { ok: false, err: '不能暗杠这张' }; removeTiles(hand, [mv.tile, mv.tile, mv.tile, mv.tile]); s.melds[seat].push({ type: 'ankong', tiles: [mv.tile, mv.tile, mv.tile, mv.tile], from: seat }); ev(s, 'kong', seat, mv.tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
-      if (mv.a === 'addkong') { if (o.addkong.indexOf(mv.tile) < 0) return { ok: false, err: '不能加杠这张' }; removeTiles(hand, [mv.tile]); s.melds[seat].forEach(function (m) { if (m.type === 'pong' && m.tiles[0] === mv.tile) { m.type = 'addkong'; m.tiles.push(mv.tile); } }); ev(s, 'kong', seat, mv.tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
-      return { ok: false, err: '现在必须出牌' };
+      if (mv.a === 'hu') { if (!o.hu) return { ok: false, err: 'You cannot win now' }; settle(s, seat, true, 0, toCounts(hand)); return { ok: true, kind: 'zimo' }; }
+      if (mv.a === 'ankong') { if (o.ankong.indexOf(mv.tile) < 0) return { ok: false, err: 'Cannot make a concealed kong with that' }; removeTiles(hand, [mv.tile, mv.tile, mv.tile, mv.tile]); s.melds[seat].push({ type: 'ankong', tiles: [mv.tile, mv.tile, mv.tile, mv.tile], from: seat }); ev(s, 'kong', seat, mv.tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
+      if (mv.a === 'addkong') { if (o.addkong.indexOf(mv.tile) < 0) return { ok: false, err: 'Cannot add a kong with that' }; removeTiles(hand, [mv.tile]); s.melds[seat].forEach(function (m) { if (m.type === 'pong' && m.tiles[0] === mv.tile) { m.type = 'addkong'; m.tiles.push(mv.tile); } }); ev(s, 'kong', seat, mv.tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
+      return { ok: false, err: 'You must discard now' };
     }
     // claim 阶段
     var cl = s.claim, tile = cl.tile, from = cl.from;
@@ -850,17 +850,17 @@
       if (!cl.queue.length) { drawFor(s, next(from)); return { ok: true, kind: 'pass' }; }
       s.turn = cl.queue[0].seat; s.seq++; return { ok: true, kind: 'pass' };
     }
-    if (mv.a === 'hu') { if (!o.hu) return { ok: false, err: '现在不能胡牌' }; c = toCounts(hand); c[tile]++; s.discards[from].pop(); settle(s, seat, false, from, c); return { ok: true, kind: 'hu' }; }
-    if (mv.a === 'pong') { if (!o.pong) return { ok: false, err: '不能碰' }; removeTiles(hand, [tile, tile]); s.discards[from].pop(); s.melds[seat].push({ type: 'pong', tiles: [tile, tile, tile], from: from }); return afterClaim(s, seat, 'pong', tile); }
-    if (mv.a === 'kong') { if (!o.kong) return { ok: false, err: '不能杠' }; removeTiles(hand, [tile, tile, tile]); s.discards[from].pop(); s.melds[seat].push({ type: 'kong', tiles: [tile, tile, tile, tile], from: from }); s.claim = null; s.lastDiscard = null; ev(s, 'kong', seat, tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
+    if (mv.a === 'hu') { if (!o.hu) return { ok: false, err: 'You cannot win now' }; c = toCounts(hand); c[tile]++; s.discards[from].pop(); settle(s, seat, false, from, c); return { ok: true, kind: 'hu' }; }
+    if (mv.a === 'pong') { if (!o.pong) return { ok: false, err: 'Cannot pong' }; removeTiles(hand, [tile, tile]); s.discards[from].pop(); s.melds[seat].push({ type: 'pong', tiles: [tile, tile, tile], from: from }); return afterClaim(s, seat, 'pong', tile); }
+    if (mv.a === 'kong') { if (!o.kong) return { ok: false, err: 'Cannot kong' }; removeTiles(hand, [tile, tile, tile]); s.discards[from].pop(); s.melds[seat].push({ type: 'kong', tiles: [tile, tile, tile, tile], from: from }); s.claim = null; s.lastDiscard = null; ev(s, 'kong', seat, tile); drawFor(s, seat, true); return { ok: true, kind: 'kong' }; }
     if (mv.a === 'chi') {
-      var pair = mv.tiles; if (!Array.isArray(pair) || !o.chi || !o.chi.some(function (x) { return pair.length === 2 && x[0] === pair[0] && x[1] === pair[1]; })) return { ok: false, err: '不能这样吃' };
+      var pair = mv.tiles; if (!Array.isArray(pair) || !o.chi || !o.chi.some(function (x) { return pair.length === 2 && x[0] === pair[0] && x[1] === pair[1]; })) return { ok: false, err: 'Cannot chow that way' };
       removeTiles(hand, pair); s.discards[from].pop(); s.melds[seat].push({ type: 'chi', tiles: sortTiles([pair[0], pair[1], tile]), from: from }); return afterClaim(s, seat, 'chi', tile);
     }
-    return { ok: false, err: '操作无效' };
+    return { ok: false, err: 'Invalid action' };
   }
   function afterClaim(s, seat, kind, tile) { s.phase = 'discard'; s.turn = seat; s.claim = null; s.drawn = -1; s.afterKong = false; s.lastDiscard = null; ev(s, kind, seat, tile); return { ok: true, kind: kind }; }
-  function resign(s, seat) { if (s.over) return; s.over = true; s.phase = 'over'; s.winner = 0; s.winners = []; s.reason = '有人离开,本局作废'; s.result = { type: 'abort' }; }
+  function resign(s, seat) { if (s.over) return; s.over = true; s.phase = 'over'; s.winner = 0; s.winners = []; s.reason = 'A player left - hand void'; s.result = { type: 'abort' }; }
   function view(s, seat) {
     var v = {};
     for (var k in s) if (k !== 'wall' && k !== 'hands' && k !== 'claim') v[k] = s[k];
@@ -870,7 +870,7 @@
     if (s.claim) { var q = s.claim.queue ? s.claim.queue[0] : null; v.claim = { tile: s.claim.tile, from: s.claim.from, actor: q ? q.seat : s.claim.actor, opts: q && q.seat === seat ? q.opts : (s.claim.actor === seat ? s.claim.opts : null) }; } else v.claim = null;
     return v;
   }
-  var API = { id: 'mahjong', name: '麻将', nSeats: 4, KN: KN, newGame: newGame, move: move, resign: resign, view: view, options: options, canWin: canWin, shanten: shanten, toCounts: toCounts, scoreHand: scoreHand,
+  var API = { id: 'mahjong', name: 'Mahjong', nSeats: 4, KN: KN, newGame: newGame, move: move, resign: resign, view: view, options: options, canWin: canWin, shanten: shanten, toCounts: toCounts, scoreHand: scoreHand,
     isHonor: isHonor, suitOf: suitOf, isSimple: isSimple, chiOptions: chiOptions, sortTiles: sortTiles, ORPHANS: ORPHANS, decompositions: decompositions, next: next };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Mahjong = API;
 })();
@@ -887,7 +887,7 @@
    一轮 = 所有未出局玩家各行动一次,超过 maxRounds 轮自动封顶开牌;轮到的人豆不够跟注时也直接开牌。
    每局每人带入 stack(默认 1000)虚拟欢乐豆,结算 = 期末 − 期初,零和。 */
 (function () {
-  var CATS = ['', '单张', '对子', '顺子', '金花', '同花顺', '豹子'];
+  var CATS = ['', 'High card', 'Pair', 'Straight', 'Flush', 'Straight flush', 'Three of a kind'];
   var RANKN = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' };
   var SUITC = ['♠', '♥', '♣', '♦'];
   function rankOf(id) { return 2 + (id >> 2); }
@@ -914,7 +914,7 @@
     var score = cat * 1000000 + (key[0] || 0) * 10000 + (key[1] || 0) * 100 + (key[2] || 0);
     var is235 = !flush && rs[0] === 5 && rs[1] === 3 && rs[2] === 2;
     var name = CATS[cat];
-    if (cat === 6) name = '豹子 ' + rankName(rs[0]) + rankName(rs[0]) + rankName(rs[0]);
+    if (cat === 6) name = 'Three of a kind ' + rankName(rs[0]) + rankName(rs[0]) + rankName(rs[0]);
     return { cat: cat, key: key, score: score, name: name, is235: is235 };
   }
   /* >0: a 大;<0: b 大;0: 完全相同(花色不分大小) */
@@ -964,20 +964,20 @@
     var act = activeList(s), best = [act[0]];
     for (var i = 1; i < act.length; i++) { var c = compareHands(s.cards[act[i]], s.cards[best[0]], s.opts); if (c > 0) best = [act[i]]; else if (c === 0) best.push(act[i]); }
     var e = evalHand(s.cards[best[0]], s.opts);
-    finish(s, best, why + ',' + (best.length > 1 ? best.length + ' 人牌型相同平分' : '座位 ' + best[0] + ' 以「' + e.name + '」获胜'), true);
+    finish(s, best, why + ', ' + (best.length > 1 ? best.length + ' players tie and split the pot' : 'seat ' + best[0] + ' wins with ' + e.name), true);
   }
   /* 一个行动结束后推进: 只剩一人 → 结束;队列空 → 新一轮(超过封顶则开牌);豆不够跟注 → 开牌 */
   function checkTurn(s) {
     if (s.over) return;
     var act = activeList(s);
-    if (act.length === 1) return finish(s, [act[0]], '其他玩家都已弃牌 / 比牌落败,座位 ' + act[0] + ' 获胜', false);
+    if (act.length === 1) return finish(s, [act[0]], 'All other players folded or lost a comparison - seat ' + act[0] + ' wins', false);
     if (!s.queue.length) {
       s.round++;
-      if (s.round > s.maxRounds) return doShowdown(s, '达到 ' + s.maxRounds + ' 轮封顶,开牌');
+      if (s.round > s.maxRounds) return doShowdown(s, 'Round limit (' + s.maxRounds + ') reached - showdown');
       s.queue = cyc(s, s.dealer);
     }
     s.turn = s.queue[0];
-    if (s.stacks[s.turn] < callCost(s, s.turn)) return doShowdown(s, '座位 ' + s.turn + ' 的欢乐豆不足以跟注,开牌');
+    if (s.stacks[s.turn] < callCost(s, s.turn)) return doShowdown(s, 'Seat ' + s.turn + ' cannot afford to call - showdown');
   }
   function dropFromQueue(s, p) { var i = s.queue.indexOf(p); if (i >= 0) s.queue.splice(i, 1); }
 
@@ -1000,33 +1000,33 @@
     pushLog(s, { seat: seat, a: 'fold' }); s.event = { t: 'fold', seat: seat }; s.seq++; checkTurn(s);
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '本局已结束' };
-    if (!Number.isInteger(seat) || seat < 1 || seat > s.n || s.status[seat] !== 'active') return { ok: false, err: '你已不在本局中' };
-    if (!mv || typeof mv !== 'object' || typeof mv.a !== 'string') return { ok: false, err: '操作无效' };
+    if (s.over) return { ok: false, err: 'The hand is over' };
+    if (!Number.isInteger(seat) || seat < 1 || seat > s.n || s.status[seat] !== 'active') return { ok: false, err: 'You are not in this hand' };
+    if (!mv || typeof mv !== 'object' || typeof mv.a !== 'string') return { ok: false, err: 'Invalid action' };
     if (mv.a === 'look') {
-      if (s.seen[seat]) return { ok: false, err: '你已经看过牌了' };
+      if (s.seen[seat]) return { ok: false, err: 'You have already looked' };
       s.seen[seat] = true; pushLog(s, { seat: seat, a: 'look' }); s.event = { t: 'look', seat: seat }; s.seq++;
       if (s.turn && s.stacks[s.turn] < callCost(s, s.turn)) checkTurn(s); // 看牌会让明注变贵: 重新检查是否开牌
       return { ok: true, kind: 'look' };
     }
-    if (seat !== s.turn) return { ok: false, err: '还没轮到你' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
     var o = options(s, seat);
     if (mv.a === 'fold') { foldSeat(s, seat); return { ok: true, kind: 'fold' }; }
     if (mv.a === 'call') {
-      if (!o.call) return { ok: false, err: '欢乐豆不足' };
+      if (!o.call) return { ok: false, err: 'Not enough beans' };
       pay(s, seat, o.call); s.calls[seat]++; dropFromQueue(s, seat);
       pushLog(s, { seat: seat, a: 'call', amt: o.call }); s.event = { t: 'call', seat: seat, amt: o.call }; s.seq++; checkTurn(s); return { ok: true, kind: 'call' };
     }
     if (mv.a === 'raise') {
       var r = o.raise.filter(function (x) { return x.unit === mv.unit; })[0];
-      if (!r) return { ok: false, err: '加注档位无效或豆不足' };
+      if (!r) return { ok: false, err: 'Invalid raise level or not enough beans' };
       pay(s, seat, r.cost); s.unit = r.unit; s.raises[seat]++; dropFromQueue(s, seat);
       pushLog(s, { seat: seat, a: 'raise', amt: r.cost, unit: r.unit }); s.event = { t: 'raise', seat: seat, amt: r.cost, unit: r.unit }; s.seq++; checkTurn(s); return { ok: true, kind: 'raise' };
     }
     if (mv.a === 'compare') {
-      if (!s.seen[seat]) return { ok: false, err: '先看牌才能比牌' };
+      if (!s.seen[seat]) return { ok: false, err: 'Look at your cards before comparing' };
       var t = o.compare.filter(function (x) { return x.target === mv.target; })[0];
-      if (!t) return { ok: false, err: s.round < 2 && activeList(s).length > 2 ? '第 2 轮起才能比牌' : '不能与该玩家比牌或豆不足' };
+      if (!t) return { ok: false, err: s.round < 2 && activeList(s).length > 2 ? 'Comparing is allowed from round 2' : 'Cannot compare with that player (or not enough beans)' };
       pay(s, seat, t.cost);
       var c = compareHands(s.cards[seat], s.cards[t.target], s.opts), loser = c > 0 ? t.target : seat; // 平局发起者输
       s.status[loser] = 'lost'; dropFromQueue(s, loser); dropFromQueue(s, seat);
@@ -1034,7 +1034,7 @@
       pushLog(s, { seat: seat, a: 'compare', target: t.target, loser: loser, amt: t.cost }); s.event = { t: 'compare', seat: seat, target: t.target, loser: loser, amt: t.cost }; s.seq++;
       checkTurn(s); return { ok: true, kind: 'compare', loser: loser };
     }
-    return { ok: false, err: '未知操作' };
+    return { ok: false, err: 'Unknown action' };
   }
   function resign(s, seat) { // 离开 / 认输 = 弃牌
     if (s.over || seat < 1 || seat > s.n || s.status[seat] !== 'active') return;
@@ -1052,9 +1052,463 @@
     v.seat = seat; v.levels = s.levels.slice(); v.queue = s.queue.slice();
     return v;
   }
-  var API = { id: 'zhajinhua', name: '炸金花', nSeats: 6, CATS: CATS, rankOf: rankOf, suitOf: suitOf, cardName: cardName, rankName: rankName, evalHand: evalHand, compareHands: compareHands,
+  var API = { id: 'zhajinhua', name: 'Zha Jin Hua', nSeats: 6, CATS: CATS, rankOf: rankOf, suitOf: suitOf, cardName: cardName, rankName: rankName, evalHand: evalHand, compareHands: compareHands,
     newGame: newGame, move: move, resign: resign, view: view, options: options, callCost: callCost, activeList: activeList, shuffleDeck: shuffleDeck };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Zhajinhua = API;
+})();
+
+/* ---- chess ---- */
+/* International Chess rules engine (full rules). White = seat 1, Black = seat 2.
+   Squares 0..63: sq = rank*8 + file, a1 = 0, h1 = 7, a8 = 56. Pieces: 1 P, 2 N, 3 B, 4 R, 5 Q, 6 K (white positive, black negative).
+   Castling bits: 1 = white O-O, 2 = white O-O-O, 4 = black O-O, 8 = black O-O-O.
+   Rules: castling, en passant, promotion, check / checkmate / stalemate, draws by threefold repetition, fifty-move rule (automatic at 100 half-moves),
+   insufficient material (K v K, K+minor v K, K+B v K+B with same-colour bishops).
+   Game state is plain JSON (serialisable). move(s, seat, {from, to, promo}) with promo in 2..5 (N, B, R, Q; default Q). */
+(function () {
+  var PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6;
+  var FILES = 'abcdefgh', LETTER = ['', '', 'N', 'B', 'R', 'Q', 'K'];
+  function sqName(s) { return FILES[s & 7] + ((s >> 3) + 1); }
+  var DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+  var RAYS = [], KNIGHT_T = [], KING_T = [];
+  (function () {
+    var KN = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
+    for (var sq = 0; sq < 64; sq++) {
+      var r = sq >> 3, f = sq & 7, rays = [], i, k;
+      for (i = 0; i < 8; i++) { var ray = [], rr = r + DIRS[i][0], ff = f + DIRS[i][1]; while (rr >= 0 && rr < 8 && ff >= 0 && ff < 8) { ray.push(rr * 8 + ff); rr += DIRS[i][0]; ff += DIRS[i][1]; } rays.push(ray); }
+      RAYS.push(rays);
+      var kn = [], kg = [];
+      for (k = 0; k < 8; k++) { var a = r + KN[k][0], c = f + KN[k][1]; if (a >= 0 && a < 8 && c >= 0 && c < 8) kn.push(a * 8 + c); }
+      for (k = 0; k < 8; k++) { var a2 = r + DIRS[k][0], c2 = f + DIRS[k][1]; if (a2 >= 0 && a2 < 8 && c2 >= 0 && c2 < 8) kg.push(a2 * 8 + c2); }
+      KNIGHT_T.push(kn); KING_T.push(kg);
+    }
+  })();
+  /* Zobrist keys (deterministic PRNG) */
+  var Z1 = [], Z2 = [], ZS1, ZS2, ZC1 = [], ZC2 = [], ZE1 = [], ZE2 = [];
+  (function () {
+    var s = 0x9e3779b9; function rnd() { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return s | 0; }
+    var i; for (i = 0; i < 12 * 64; i++) { Z1.push(rnd()); Z2.push(rnd()); }
+    ZS1 = rnd(); ZS2 = rnd(); for (i = 0; i < 16; i++) { ZC1.push(rnd()); ZC2.push(rnd()); } for (i = 0; i < 8; i++) { ZE1.push(rnd()); ZE2.push(rnd()); }
+  })();
+  function pidx(p) { return p > 0 ? p - 1 : 5 - p; }
+
+  function Pos() { this.b = new Array(64).fill(0); this.side = 1; this.castle = 0; this.ep = -1; this.half = 0; this.full = 1; this.k = [4, 60]; this.h1 = 0; this.h2 = 0; this.st = []; this.keys = []; }
+  function hashPos(pos) {
+    var h1 = 0, h2 = 0;
+    for (var s = 0; s < 64; s++) { var p = pos.b[s]; if (p) { var i = pidx(p) * 64 + s; h1 ^= Z1[i]; h2 ^= Z2[i]; } }
+    if (pos.side === -1) { h1 ^= ZS1; h2 ^= ZS2; }
+    h1 ^= ZC1[pos.castle]; h2 ^= ZC2[pos.castle];
+    pos.h1 = h1; pos.h2 = h2;
+  }
+  function epRelevant(pos) {
+    var ep = pos.ep; if (ep < 0) return false; var f = ep & 7, b = pos.b;
+    if (pos.side === 1) return (f > 0 && b[ep - 9] === 1) || (f < 7 && b[ep - 7] === 1);
+    return (f > 0 && b[ep + 7] === -1) || (f < 7 && b[ep + 9] === -1);
+  }
+  function posKey(pos) {
+    var h1 = pos.h1, h2 = pos.h2;
+    if (epRelevant(pos)) { h1 ^= ZE1[pos.ep & 7]; h2 ^= ZE2[pos.ep & 7]; }
+    return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
+  }
+  function attacked(pos, sq, by) { // is square attacked by side `by` (1 white, -1 black)
+    var b = pos.b, r = sq >> 3, f = sq & 7, i, t, ray, j, p;
+    var pr = r - by; if (pr >= 0 && pr < 8) { if (f > 0 && b[pr * 8 + f - 1] === by * PAWN) return true; if (f < 7 && b[pr * 8 + f + 1] === by * PAWN) return true; }
+    var kn = KNIGHT_T[sq]; for (i = 0; i < kn.length; i++) if (b[kn[i]] === by * KNIGHT) return true;
+    var kg = KING_T[sq]; for (i = 0; i < kg.length; i++) if (b[kg[i]] === by * KING) return true;
+    var rays = RAYS[sq];
+    for (i = 0; i < 8; i++) {
+      ray = rays[i];
+      for (j = 0; j < ray.length; j++) { t = ray[j]; p = b[t]; if (p) { if (p === by * QUEEN || p === by * (i < 4 ? ROOK : BISHOP)) return true; break; } }
+    }
+    return false;
+  }
+  function inCheck(pos) { return attacked(pos, pos.k[pos.side === 1 ? 0 : 1], -pos.side); }
+  var FL_EP = 1, FL_CASTLE = 2, FL_DBL = 4;
+  function mk(from, to, promo, flag) { return from | (to << 6) | ((promo || 0) << 12) | ((flag || 0) << 15); }
+  function gen(pos, caps) { // pseudo-legal; caps: captures + queen promotions only
+    var b = pos.b, side = pos.side, out = [], sq, p, i, j, t, ray, rays, q;
+    for (sq = 0; sq < 64; sq++) {
+      p = b[sq]; if (!p || (p > 0) !== (side === 1)) continue;
+      var a = p * side, r = sq >> 3, f = sq & 7;
+      if (a === PAWN) {
+        var fwd = sq + side * 8, lastR = side === 1 ? 6 : 1, startR = side === 1 ? 1 : 6;
+        if (r === lastR) { // promotion
+          if (!b[fwd]) { if (caps) out.push(mk(sq, fwd, QUEEN)); else { out.push(mk(sq, fwd, QUEEN), mk(sq, fwd, ROOK), mk(sq, fwd, BISHOP), mk(sq, fwd, KNIGHT)); } }
+          for (j = -1; j <= 1; j += 2) { if (f + j < 0 || f + j > 7) continue; t = fwd + j; if (b[t] && (b[t] > 0) !== (side === 1)) { if (caps) out.push(mk(sq, t, QUEEN)); else out.push(mk(sq, t, QUEEN), mk(sq, t, ROOK), mk(sq, t, BISHOP), mk(sq, t, KNIGHT)); } }
+        } else {
+          if (!caps && !b[fwd]) { out.push(mk(sq, fwd)); if (r === startR && !b[fwd + side * 8]) out.push(mk(sq, fwd + side * 8, 0, FL_DBL)); }
+          for (j = -1; j <= 1; j += 2) {
+            if (f + j < 0 || f + j > 7) continue; t = fwd + j;
+            if (b[t] && (b[t] > 0) !== (side === 1)) out.push(mk(sq, t));
+            else if (t === pos.ep) out.push(mk(sq, t, 0, FL_EP));
+          }
+        }
+      } else if (a === KNIGHT || a === KING) {
+        var tb = a === KNIGHT ? KNIGHT_T[sq] : KING_T[sq];
+        for (i = 0; i < tb.length; i++) { t = tb[i]; q = b[t]; if (!q) { if (!caps) out.push(mk(sq, t)); } else if ((q > 0) !== (side === 1)) out.push(mk(sq, t)); }
+        if (a === KING && !caps) {
+          if (side === 1 && sq === 4) {
+            if ((pos.castle & 1) && !b[5] && !b[6] && b[7] === ROOK && !attacked(pos, 4, -1) && !attacked(pos, 5, -1)) out.push(mk(4, 6, 0, FL_CASTLE));
+            if ((pos.castle & 2) && !b[3] && !b[2] && !b[1] && b[0] === ROOK && !attacked(pos, 4, -1) && !attacked(pos, 3, -1)) out.push(mk(4, 2, 0, FL_CASTLE));
+          } else if (side === -1 && sq === 60) {
+            if ((pos.castle & 4) && !b[61] && !b[62] && b[63] === -ROOK && !attacked(pos, 60, 1) && !attacked(pos, 61, 1)) out.push(mk(60, 62, 0, FL_CASTLE));
+            if ((pos.castle & 8) && !b[59] && !b[58] && !b[57] && b[56] === -ROOK && !attacked(pos, 60, 1) && !attacked(pos, 59, 1)) out.push(mk(60, 58, 0, FL_CASTLE));
+          }
+        }
+      } else {
+        rays = RAYS[sq]; var from = a === BISHOP ? 4 : 0, to = a === ROOK ? 4 : 8;
+        for (i = from; i < to; i++) {
+          ray = rays[i];
+          for (j = 0; j < ray.length; j++) { t = ray[j]; q = b[t]; if (!q) { if (!caps) out.push(mk(sq, t)); } else { if ((q > 0) !== (side === 1)) out.push(mk(sq, t)); break; } }
+        }
+      }
+    }
+    return out;
+  }
+  function make(pos, m) {
+    var b = pos.b, from = m & 63, to = (m >> 6) & 63, promo = (m >> 12) & 7, flag = m >> 15, p = b[from], side = pos.side, cap = b[to];
+    pos.st.push(cap, pos.castle, pos.ep, pos.half, pos.h1, pos.h2);
+    var h1 = pos.h1, h2 = pos.h2, i;
+    i = pidx(p) * 64 + from; h1 ^= Z1[i]; h2 ^= Z2[i];
+    if (cap) { i = pidx(cap) * 64 + to; h1 ^= Z1[i]; h2 ^= Z2[i]; }
+    b[from] = 0;
+    var np = promo ? promo * side : p; b[to] = np; i = pidx(np) * 64 + to; h1 ^= Z1[i]; h2 ^= Z2[i];
+    pos.half = (p * side === PAWN || cap) ? 0 : pos.half + 1;
+    var ne = -1;
+    if (flag === FL_EP) { var cs = to - side * 8; i = pidx(b[cs]) * 64 + cs; h1 ^= Z1[i]; h2 ^= Z2[i]; b[cs] = 0; pos.half = 0; }
+    else if (flag === FL_DBL) ne = from + side * 8;
+    else if (flag === FL_CASTLE) {
+      var rf, rt; if (to > from) { rf = from + 3; rt = from + 1; } else { rf = from - 4; rt = from - 1; }
+      var rk = b[rf]; b[rf] = 0; b[rt] = rk;
+      i = pidx(rk) * 64 + rf; h1 ^= Z1[i]; h2 ^= Z2[i]; i = pidx(rk) * 64 + rt; h1 ^= Z1[i]; h2 ^= Z2[i];
+    }
+    if (p * side === KING) pos.k[side === 1 ? 0 : 1] = to;
+    var c = pos.castle;
+    if (c) {
+      if (from === 4 || to === 4) c &= ~3; if (from === 60 || to === 60) c &= ~12;
+      if (from === 0 || to === 0) c &= ~2; if (from === 7 || to === 7) c &= ~1;
+      if (from === 56 || to === 56) c &= ~8; if (from === 63 || to === 63) c &= ~4;
+    }
+    h1 ^= ZC1[pos.castle] ^ ZC1[c]; h2 ^= ZC2[pos.castle] ^ ZC2[c];
+    pos.castle = c; pos.ep = ne; h1 ^= ZS1; h2 ^= ZS2;
+    pos.h1 = h1; pos.h2 = h2; pos.side = -side; if (side === -1) pos.full++;
+    pos.keys.push(posKey(pos));
+  }
+  function unmake(pos, m) {
+    var b = pos.b, from = m & 63, to = (m >> 6) & 63, promo = (m >> 12) & 7, flag = m >> 15, st = pos.st;
+    pos.keys.pop();
+    pos.h2 = st.pop(); pos.h1 = st.pop(); pos.half = st.pop(); pos.ep = st.pop(); pos.castle = st.pop(); var cap = st.pop();
+    pos.side = -pos.side; var side = pos.side; if (side === -1) pos.full--;
+    var p = promo ? side * PAWN : b[to];
+    b[from] = p; b[to] = cap;
+    if (flag === FL_EP) { b[to] = 0; b[to - side * 8] = -side * PAWN; }
+    else if (flag === FL_CASTLE) { var rf, rt; if (to > from) { rf = from + 3; rt = from + 1; } else { rf = from - 4; rt = from - 1; } b[rf] = b[rt]; b[rt] = 0; }
+    if (p * side === KING) pos.k[side === 1 ? 0 : 1] = from;
+  }
+  function legalMoves(pos) {
+    var ms = gen(pos, false), out = [], side = pos.side, ki = side === 1 ? 0 : 1;
+    for (var i = 0; i < ms.length; i++) { make(pos, ms[i]); if (!attacked(pos, pos.k[ki], pos.side)) out.push(ms[i]); unmake(pos, ms[i]); }
+    return out;
+  }
+  function perft(pos, d) {
+    if (d === 0) return 1;
+    var ms = gen(pos, false), n = 0, ki = pos.side === 1 ? 0 : 1;
+    for (var i = 0; i < ms.length; i++) {
+      make(pos, ms[i]);
+      if (!attacked(pos, pos.k[ki], pos.side)) n += d === 1 ? 1 : perft(pos, d - 1);
+      unmake(pos, ms[i]);
+    }
+    return n;
+  }
+  /* ---------- FEN ---------- */
+  var START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  function posFromFEN(fen) {
+    var pos = new Pos(), parts = fen.trim().split(/\s+/), rows = parts[0].split('/'), CH = { p: 1, n: 2, b: 3, r: 4, q: 5, k: 6 };
+    for (var r = 0; r < 8; r++) {
+      var f = 0, row = rows[7 - r];
+      for (var i = 0; i < row.length; i++) {
+        var ch = row[i];
+        if (ch >= '1' && ch <= '8') f += +ch; else { var lo = ch.toLowerCase(), v = CH[lo]; pos.b[r * 8 + f] = ch === lo ? -v : v; if (v === KING) pos.k[ch === lo ? 1 : 0] = r * 8 + f; f++; }
+      }
+    }
+    pos.side = (parts[1] || 'w') === 'b' ? -1 : 1;
+    var cs = parts[2] || '-'; pos.castle = (cs.indexOf('K') >= 0 ? 1 : 0) | (cs.indexOf('Q') >= 0 ? 2 : 0) | (cs.indexOf('k') >= 0 ? 4 : 0) | (cs.indexOf('q') >= 0 ? 8 : 0);
+    pos.ep = parts[3] && parts[3] !== '-' ? (parts[3].charCodeAt(0) - 97) + (parseInt(parts[3][1], 10) - 1) * 8 : -1;
+    pos.half = parseInt(parts[4], 10) || 0; pos.full = parseInt(parts[5], 10) || 1;
+    hashPos(pos); pos.keys = [posKey(pos)];
+    return pos;
+  }
+  function toFEN(s) {
+    var rows = [], CH = ['', 'p', 'n', 'b', 'r', 'q', 'k'];
+    for (var r = 7; r >= 0; r--) { var row = '', e = 0; for (var f = 0; f < 8; f++) { var p = s.board[r * 8 + f]; if (!p) e++; else { if (e) { row += e; e = 0; } var c = CH[Math.abs(p)]; row += p > 0 ? c.toUpperCase() : c; } } if (e) row += e; rows.push(row); }
+    var cs = (s.castle & 1 ? 'K' : '') + (s.castle & 2 ? 'Q' : '') + (s.castle & 4 ? 'k' : '') + (s.castle & 8 ? 'q' : '');
+    return rows.join('/') + ' ' + (s.turn === 1 ? 'w' : 'b') + ' ' + (cs || '-') + ' ' + (s.ep >= 0 ? sqName(s.ep) : '-') + ' ' + s.half + ' ' + s.full;
+  }
+  /* position object for a game state (used by the AI and by move validation) */
+  function posFromState(s) {
+    var pos = new Pos(); pos.b = s.board.slice(); pos.side = s.turn === 1 ? 1 : -1; pos.castle = s.castle; pos.ep = s.ep; pos.half = s.half; pos.full = s.full;
+    for (var i = 0; i < 64; i++) { if (pos.b[i] === KING) pos.k[0] = i; else if (pos.b[i] === -KING) pos.k[1] = i; }
+    hashPos(pos); pos.keys = (s.hist || []).slice(); if (!pos.keys.length) pos.keys.push(posKey(pos));
+    return pos;
+  }
+  function insufficient(b) {
+    var minors = [], bishopsSq = [];
+    for (var s = 0; s < 64; s++) { var a = Math.abs(b[s]); if (!a || a === KING) continue; if (a === PAWN || a === ROOK || a === QUEEN) return false; minors.push(a); if (a === BISHOP) bishopsSq.push(((s >> 3) + (s & 7)) & 1); }
+    if (minors.length <= 1) return true;
+    if (minors.length === bishopsSq.length) { for (var i = 1; i < bishopsSq.length; i++) if (bishopsSq[i] !== bishopsSq[0]) return false; return true; } // only same-colour bishops
+    return false;
+  }
+  function stateFromPos(pos) {
+    return { game: 'chess', board: pos.b.slice(), turn: pos.side === 1 ? 1 : 2, castle: pos.castle, ep: pos.ep, half: pos.half, full: pos.full, hist: [posKey(pos)], over: false, winner: 0, reason: '', check: false, last: null, san: [], count: 0, seq: 0 };
+  }
+  function newGame(o) {
+    o = o || {}; var s = stateFromPos(posFromFEN(o.fen || START_FEN));
+    var pos = posFromState(s); s.check = inCheck(pos);
+    var ms = legalMoves(pos); if (!ms.length) { s.over = true; s.winner = s.check ? (s.turn === 1 ? 2 : 1) : 3; s.reason = s.check ? 'Checkmate' : 'Stalemate'; }
+    return s;
+  }
+  function moveToObj(m) { return { from: m & 63, to: (m >> 6) & 63, promo: (m >> 12) & 7 }; }
+  function sanOf(pos, m, legal, suffix) {
+    var from = m & 63, to = (m >> 6) & 63, promo = (m >> 12) & 7, flag = m >> 15, p = Math.abs(pos.b[from]), cap = pos.b[to] !== 0 || flag === FL_EP, str;
+    if (flag === FL_CASTLE) str = to > from ? 'O-O' : 'O-O-O';
+    else if (p === PAWN) str = (cap ? FILES[from & 7] + 'x' : '') + sqName(to) + (promo ? '=' + LETTER[promo] : '');
+    else {
+      var same = legal.filter(function (o) { return o !== m && (o & 63) !== from && ((o >> 6) & 63) === to && Math.abs(pos.b[o & 63]) === p; }), dis = '';
+      if (same.length) { var sf = same.some(function (o) { return (o & 7) === (from & 7); }), sr = same.some(function (o) { return ((o & 63) >> 3) === (from >> 3); }); dis = !sf ? FILES[from & 7] : !sr ? String((from >> 3) + 1) : sqName(from); }
+      str = LETTER[p] + dis + (cap ? 'x' : '') + sqName(to);
+    }
+    return str + suffix;
+  }
+  function findMove(legal, mv) {
+    var promo = mv.promo || 0;
+    for (var i = 0; i < legal.length; i++) { var m = legal[i]; if ((m & 63) === mv.from && ((m >> 6) & 63) === mv.to) { var pr = (m >> 12) & 7; if (pr) { if (pr === (promo || QUEEN)) return m; } else return m; } }
+    return -1;
+  }
+  function move(s, seat, mv) {
+    if (s.over) return { ok: false, err: 'The game is over' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
+    if (!mv || !Number.isInteger(mv.from) || !Number.isInteger(mv.to) || mv.from < 0 || mv.from > 63 || mv.to < 0 || mv.to > 63) return { ok: false, err: 'Invalid move' };
+    if (mv.promo && !(mv.promo >= 2 && mv.promo <= 5)) return { ok: false, err: 'Invalid move' };
+    var pos = posFromState(s), legal = legalMoves(pos), m = findMove(legal, mv);
+    if (m < 0) return { ok: false, err: 'Illegal move' };
+    var from = m & 63, to = (m >> 6) & 63, flag = m >> 15, movedPiece = Math.abs(pos.b[from]), capPiece = flag === FL_EP ? PAWN : Math.abs(pos.b[to]);
+    make(pos, m);
+    var chk = inCheck(pos), replies = legalMoves(pos), suffix = chk ? (replies.length ? '+' : '#') : '';
+    var san0 = sanOf(posFromState(s), m, legal, suffix); // SAN is computed on the pre-move position
+    s.board = pos.b.slice(); s.turn = pos.side === 1 ? 1 : 2; s.castle = pos.castle; s.ep = pos.ep; s.half = pos.half; s.full = pos.full; s.check = chk;
+    s.last = { from: from, to: to, piece: movedPiece, cap: capPiece, promo: (m >> 12) & 7, castle: flag === FL_CASTLE, ep: flag === FL_EP, san: san0 };
+    s.san.push(san0); s.count++; s.seq = (s.seq || 0) + 1;
+    if (s.half === 0) s.hist = [posKey(pos)]; else s.hist.push(posKey(pos));
+    var key = posKey(pos), rep = 0; for (var i = 0; i < s.hist.length; i++) if (s.hist[i] === key) rep++;
+    if (!replies.length) { s.over = true; if (chk) { s.winner = seat; s.reason = 'Checkmate'; } else { s.winner = 3; s.reason = 'Stalemate'; } }
+    else if (insufficient(s.board)) { s.over = true; s.winner = 3; s.reason = 'Draw by insufficient material'; }
+    else if (rep >= 3) { s.over = true; s.winner = 3; s.reason = 'Draw by threefold repetition'; }
+    else if (s.half >= 100) { s.over = true; s.winner = 3; s.reason = 'Draw by the fifty-move rule'; }
+    return { ok: true, san: san0, check: chk, over: s.over };
+  }
+  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = 'Opponent resigned / left'; }
+  function view(s) { return s; }
+  function legalMovesFrom(s, seat, from) {
+    if (s.over || seat !== s.turn) return [];
+    var pos = posFromState(s), out = [];
+    legalMoves(pos).forEach(function (m) { if ((m & 63) === from) out.push(moveToObj(m)); });
+    return out;
+  }
+  function allLegal(s) { return legalMoves(posFromState(s)).map(moveToObj); }
+  var API = { id: 'chess', name: 'International Chess', newGame: newGame, move: move, resign: resign, view: view, legalMovesFrom: legalMovesFrom, allLegal: allLegal,
+    sqName: sqName, toFEN: toFEN, START_FEN: START_FEN, LETTER: LETTER,
+    _: { Pos: Pos, posFromFEN: posFromFEN, posFromState: posFromState, gen: gen, make: make, unmake: unmake, legalMoves: legalMoves, perft: perft, attacked: attacked, inCheck: inCheck, posKey: posKey, hashPos: hashPos, insufficient: insufficient, moveToObj: moveToObj, mk: mk, stateFromPos: stateFromPos,
+      RAYS: RAYS, KNIGHT_T: KNIGHT_T, KING_T: KING_T, pidx: pidx } };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Chess = API;
+})();
+
+/* ---- holdem ---- */
+/* Texas Hold'em engine (2-6 players). VIRTUAL CHIPS ONLY - for entertainment only, no cash value, not redeemable.
+   Cards 0..51: rank = 2 + (id >> 2) (2..14, A = 14), suit = id & 3 (0 spade, 1 heart, 2 club, 3 diamond).
+   One state = one hand. Stacks carry between hands via newGame({stacks}) / nextStacks(). Seats 1..n.
+   Blinds sb/bb (default 10/20), buy-in 1000. Actions: {a:'fold'} {a:'check'} {a:'call'} {a:'raise', to:N} (N = total bet this round) {a:'allin'}.
+   Side pots are built from each player's total contribution; ties split pots (odd chip to the first winner left of the dealer). */
+(function () {
+  var CAT = ['High card', 'Pair', 'Two pair', 'Three of a kind', 'Straight', 'Flush', 'Full house', 'Four of a kind', 'Straight flush'];
+  var RN = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }, RNAME = { 2: 'Twos', 3: 'Threes', 4: 'Fours', 5: 'Fives', 6: 'Sixes', 7: 'Sevens', 8: 'Eights', 9: 'Nines', 10: 'Tens', 11: 'Jacks', 12: 'Queens', 13: 'Kings', 14: 'Aces' };
+  var RSING = { 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six', 7: 'Seven', 8: 'Eight', 9: 'Nine', 10: 'Ten', 11: 'Jack', 12: 'Queen', 13: 'King', 14: 'Ace' };
+  var SUITC = ['♠', '♥', '♣', '♦'];
+  function rankOf(id) { return 2 + (id >> 2); }
+  function suitOf(id) { return id & 3; }
+  function rankName(r) { return RN[r] || String(r); }
+  function cardName(id) { return rankName(rankOf(id)) + SUITC[suitOf(id)]; }
+  var P5 = [50625, 3375, 225, 15, 1], CATM = 759375;
+  function pack(cat, ranks) { var s = cat * CATM; for (var i = 0; i < 5; i++) s += (ranks[i] || 0) * P5[i]; return s; }
+  function straightHigh(has) { for (var hi = 14; hi >= 5; hi--) { var ok = true; for (var k = 0; k < 5; k++) { var r = hi - k; if (r === 1) r = 14; if (!has[r]) { ok = false; break; } } if (ok) return hi; } return 0; }
+  /* best 5-card hand from 5..7 cards -> numeric score (higher is better) */
+  function evalCards(cs) {
+    var rc = [], i, r, s, has = [], suits = [[], [], [], []];
+    for (i = 0; i < 15; i++) { rc.push(0); has.push(false); }
+    for (i = 0; i < cs.length; i++) { r = 2 + (cs[i] >> 2); s = cs[i] & 3; rc[r]++; has[r] = true; suits[s].push(r); }
+    var fl = -1; for (s = 0; s < 4; s++) if (suits[s].length >= 5) fl = s;
+    if (fl >= 0) { var fh = []; for (i = 0; i < 15; i++) fh.push(false); suits[fl].forEach(function (x) { fh[x] = true; }); var sh = straightHigh(fh); if (sh) return pack(8, [sh]); }
+    var quads = [], trips = [], pairs = [], singles = [];
+    for (r = 14; r >= 2; r--) { if (rc[r] === 4) quads.push(r); else if (rc[r] === 3) trips.push(r); else if (rc[r] === 2) pairs.push(r); else if (rc[r] === 1) singles.push(r); }
+    function kick(ex, n) { var out = []; for (var q = 14; q >= 2 && out.length < n; q--) if (rc[q] && ex.indexOf(q) < 0) out.push(q); return out; }
+    if (quads.length) return pack(7, [quads[0]].concat(kick([quads[0]], 1)));
+    if (trips.length && (trips.length > 1 || pairs.length)) { var pr = trips.length > 1 ? Math.max(trips[1], pairs[0] || 0) : pairs[0]; return pack(6, [trips[0], pr]); }
+    if (fl >= 0) return pack(5, suits[fl].slice().sort(function (a, b) { return b - a; }).slice(0, 5));
+    var st = straightHigh(has); if (st) return pack(4, [st]);
+    if (trips.length) return pack(3, [trips[0]].concat(kick([trips[0]], 2)));
+    if (pairs.length >= 2) return pack(2, [pairs[0], pairs[1]].concat(kick([pairs[0], pairs[1]], 1)));
+    if (pairs.length === 1) return pack(1, [pairs[0]].concat(kick([pairs[0]], 3)));
+    return pack(0, kick([], 5));
+  }
+  function catOf(score) { return Math.floor(score / CATM); }
+  function describe(score) { // English description, e.g. "Pair of Kings"
+    var c = catOf(score), rem = score - c * CATM, r = []; for (var i = 0; i < 5; i++) { r.push(Math.floor(rem / P5[i])); rem %= P5[i]; }
+    switch (c) {
+      case 0: return 'High card ' + RSING[r[0]];
+      case 1: return 'Pair of ' + RNAME[r[0]];
+      case 2: return 'Two pair, ' + RNAME[r[0]] + ' and ' + RNAME[r[1]];
+      case 3: return 'Three of a kind, ' + RNAME[r[0]];
+      case 4: return RSING[r[0]] + '-high straight';
+      case 5: return RSING[r[0]] + '-high flush';
+      case 6: return 'Full house, ' + RNAME[r[0]] + ' over ' + RNAME[r[1]];
+      case 7: return 'Four of a kind, ' + RNAME[r[0]];
+      default: return r[0] === 14 ? 'Royal flush' : RSING[r[0]] + '-high straight flush';
+    }
+  }
+  function shuffleDeck(rng) { var d = []; for (var i = 0; i < 52; i++) d.push(i); for (var j = 51; j > 0; j--) { var k = Math.floor(rng() * (j + 1)), t = d[j]; d[j] = d[k]; d[k] = t; } return d; }
+
+  function nextSeat(s, from, pred) { for (var i = 1; i <= s.n; i++) { var p = ((from - 1 + i) % s.n) + 1; if (pred(p)) return p; } return 0; }
+  function canAct(s, p) { return s.status[p] === 'active'; }
+  function live(s, p) { return s.status[p] === 'active' || s.status[p] === 'allin'; }
+  function postBlind(s, p, amt) { var a = Math.min(amt, s.stacks[p]); s.stacks[p] -= a; s.bets[p] += a; s.contrib[p] += a; s.pot += a; if (s.stacks[p] === 0) s.status[p] = 'allin'; return a; }
+  function newGame(o) {
+    o = o || {}; var rng = o.rng || Math.random, n = Math.max(2, Math.min(6, Math.floor(o.n || 4))), sb = o.sb || 10, bb = o.bb || 20, buyin = o.buyin || 1000;
+    var s = { game: 'holdem', n: n, sb: sb, bb: bb, buyin: buyin, handNo: o.handNo || 1, dealer: ((Math.floor(o.dealer || 1) - 1) % n) + 1, phase: 'preflop', turn: 0, board: [], hands: [null], deck: [], stacks: [0], start: [0], bets: [0], contrib: [0], status: [''], acted: [false], raiseOpen: [false],
+      currentBet: 0, minRaise: bb, pot: 0, over: false, showdown: false, winners: [], pots: [], scores: [0], reason: '', log: [], event: null, seq: 0, hnames: [''], sbSeat: 0, bbSeat: 0 };
+    var d = shuffleDeck(rng), p, i;
+    for (p = 1; p <= n; p++) {
+      var st = o.stacks && o.stacks[p] >= 0 ? o.stacks[p] : buyin; if (st < bb && !o.keepBroke) st = buyin;
+      s.stacks.push(st); s.start.push(st); s.bets.push(0); s.contrib.push(0); s.status.push(st > 0 ? 'active' : 'out'); s.acted.push(false); s.raiseOpen.push(true); s.scores.push(0); s.hnames.push('');
+      s.hands.push([d[(p - 1) * 2], d[(p - 1) * 2 + 1]]);
+    }
+    s.deck = d.slice(n * 2);
+    var inHand = function (q) { return s.status[q] !== 'out'; };
+    if (n === 2) { s.sbSeat = s.dealer; s.bbSeat = nextSeat(s, s.dealer, inHand); } else { s.sbSeat = nextSeat(s, s.dealer, inHand); s.bbSeat = nextSeat(s, s.sbSeat, inHand); }
+    postBlind(s, s.sbSeat, sb); postBlind(s, s.bbSeat, bb);
+    s.currentBet = Math.max(s.bets[s.sbSeat], s.bets[s.bbSeat]);
+    s.event = { t: 'deal', seat: 0 }; s.seq++;
+    var first = nextSeat(s, s.bbSeat, function (q) { return canAct(s, q); });
+    s.turn = first; advance(s, true);
+    return s;
+  }
+  function liveCount(s) { var c = 0; for (var p = 1; p <= s.n; p++) if (live(s, p)) c++; return c; }
+  function needsAction(s, p) { return canAct(s, p) && (!s.acted[p] || s.bets[p] < s.currentBet); }
+  /* after an action (or at the start of a round): choose the next actor, or close the round */
+  function advance(s, fromStart) {
+    if (s.over) return;
+    if (liveCount(s) === 1) return awardUncontested(s);
+    var cur = s.turn || s.dealer, p = fromStart && s.turn && needsAction(s, s.turn) ? s.turn : nextSeat(s, cur, function (q) { return needsAction(s, q); });
+    if (p && (function () { var c = 0; for (var q = 1; q <= s.n; q++) if (canAct(s, q)) c++; if (c === 1 && s.bets[p] >= s.currentBet) return false; return true; })()) { s.turn = p; return; }
+    nextStreet(s);
+  }
+  function resetRound(s) { s.currentBet = 0; s.minRaise = s.bb; for (var p = 1; p <= s.n; p++) { s.bets[p] = 0; s.acted[p] = false; s.raiseOpen[p] = true; } }
+  function nextStreet(s) {
+    resetRound(s);
+    if (s.phase === 'river') return showdown(s);
+    var ev;
+    if (s.phase === 'preflop') { s.board.push(s.deck.shift(), s.deck.shift(), s.deck.shift()); s.phase = 'flop'; ev = 'flop'; }
+    else if (s.phase === 'flop') { s.board.push(s.deck.shift()); s.phase = 'turn'; ev = 'turn'; }
+    else { s.board.push(s.deck.shift()); s.phase = 'river'; ev = 'river'; }
+    s.event = { t: ev, seat: 0 }; s.seq++;
+    var actors = 0; for (var q = 1; q <= s.n; q++) if (canAct(s, q)) actors++;
+    if (actors <= 1) { s.turn = 0; return nextStreet(s); } // everyone all-in (or one left with nobody to bet against): run it out
+    s.turn = nextSeat(s, s.dealer, function (q) { return canAct(s, q); }); advance(s, true);
+  }
+  function settle(s) { for (var p = 1; p <= s.n; p++) s.scores[p] = s.stacks[p] - s.start[p]; }
+  function awardUncontested(s) {
+    var w = 0; for (var p = 1; p <= s.n; p++) if (live(s, p)) w = p;
+    s.stacks[w] += s.pot; s.pots = [{ amount: s.pot, eligible: [w], winners: [w] }]; s.pot = 0;
+    s.over = true; s.phase = 'over'; s.turn = 0; s.winners = [w]; s.showdown = false; s.reason = 'Everyone else folded'; s.final = { t: 'win', seat: w }; settle(s);
+  }
+  function showdown(s) {
+    var scoreOf = [0], p;
+    for (p = 1; p <= s.n; p++) scoreOf.push(live(s, p) ? evalCards(s.hands[p].concat(s.board)) : -1);
+    var levels = [], seen = {};
+    for (p = 1; p <= s.n; p++) if (s.contrib[p] > 0 && !seen[s.contrib[p]]) { seen[s.contrib[p]] = 1; levels.push(s.contrib[p]); }
+    levels.sort(function (a, b) { return a - b; });
+    var prev = 0, pots = [], all = {};
+    levels.forEach(function (lv) {
+      var amt = 0, elig = [];
+      for (var q = 1; q <= s.n; q++) { amt += Math.max(0, Math.min(s.contrib[q], lv) - prev); if (live(s, q) && s.contrib[q] >= lv) elig.push(q); }
+      prev = lv; if (!amt) return;
+      if (!elig.length) { var last = pots[pots.length - 1]; if (last) { last.amount += amt; } return; } // dead money goes to the previous pot
+      pots.push({ amount: amt, eligible: elig, winners: [] });
+    });
+    pots.forEach(function (pt) {
+      var best = -1; pt.eligible.forEach(function (q) { if (scoreOf[q] > best) best = scoreOf[q]; });
+      pt.winners = pt.eligible.filter(function (q) { return scoreOf[q] === best; });
+      var share = Math.floor(pt.amount / pt.winners.length), extra = pt.amount - share * pt.winners.length;
+      var order = []; for (var i = 1; i <= s.n; i++) { var q = ((s.dealer - 1 + i) % s.n) + 1; if (pt.winners.indexOf(q) >= 0) order.push(q); }
+      order.forEach(function (q, k) { s.stacks[q] += share + (k < extra ? 1 : 0); all[q] = 1; });
+    });
+    for (p = 1; p <= s.n; p++) if (scoreOf[p] >= 0) s.hnames[p] = describe(scoreOf[p]);
+    s.pots = pots; s.pot = 0; s.over = true; s.phase = 'over'; s.turn = 0; s.showdown = true; s.winners = Object.keys(all).map(Number).sort();
+    s.reason = s.winners.length > 1 ? 'Split pot' : 'Seat ' + s.winners[0] + ' wins with ' + s.hnames[s.winners[0]]; s.final = { t: 'showdown', seat: s.winners[0] }; settle(s);
+  }
+  function options(s, seat) {
+    var o = { turn: false, fold: false, check: false, call: 0, canRaise: false, raiseMin: 0, raiseMax: 0, allin: 0 };
+    if (s.over || seat < 1 || seat > s.n || s.turn !== seat || !canAct(s, seat)) return o;
+    var st = s.stacks[seat], need = s.currentBet - s.bets[seat];
+    o.turn = true; o.fold = true; o.check = need <= 0; o.call = need > 0 ? Math.min(need, st) : 0; o.allin = st + s.bets[seat];
+    var others = 0; for (var p = 1; p <= s.n; p++) if (p !== seat && canAct(s, p)) others++;
+    if (s.raiseOpen[seat] && st > need && others > 0) { o.canRaise = true; o.raiseMin = Math.min(s.currentBet + s.minRaise, o.allin); o.raiseMax = o.allin; if (s.currentBet === 0) o.raiseMin = Math.min(Math.max(s.bb, 1), o.allin); }
+    return o;
+  }
+  function log(s, e) { s.log.push(e); if (s.log.length > 60) s.log.shift(); }
+  function afterAct(s, seat, kind, amt) { log(s, { seat: seat, a: kind, amt: amt || 0, street: s.phase }); s.event = { t: kind, seat: seat, amt: amt || 0 }; s.seq++; advance(s); }
+  function put(s, seat, amt) { s.stacks[seat] -= amt; s.bets[seat] += amt; s.contrib[seat] += amt; s.pot += amt; if (s.stacks[seat] === 0) s.status[seat] = 'allin'; }
+  function raiseTo(s, seat, to) {
+    var add = to - s.bets[seat], inc = to - s.currentBet; put(s, seat, add);
+    var full = inc >= s.minRaise;
+    if (to > s.currentBet) { if (full) { s.minRaise = inc; for (var p = 1; p <= s.n; p++) if (p !== seat && canAct(s, p)) { s.raiseOpen[p] = true; } } s.currentBet = to; }
+    s.acted[seat] = true; s.raiseOpen[seat] = false;
+    if (!full) for (var q = 1; q <= s.n; q++) if (q !== seat && s.acted[q]) s.raiseOpen[q] = false; // a short all-in does not reopen the betting
+    return add;
+  }
+  function move(s, seat, mv) {
+    if (s.over) return { ok: false, err: 'The hand is over' };
+    if (!Number.isInteger(seat) || seat < 1 || seat > s.n || !canAct(s, seat)) return { ok: false, err: 'You are not in this hand' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
+    if (!mv || typeof mv.a !== 'string') return { ok: false, err: 'Invalid action' };
+    var o = options(s, seat), amt;
+    if (mv.a === 'fold') { s.status[seat] = 'folded'; s.acted[seat] = true; afterAct(s, seat, 'fold'); return { ok: true }; }
+    if (mv.a === 'check') { if (!o.check) return { ok: false, err: 'You cannot check - call or fold' }; s.acted[seat] = true; s.raiseOpen[seat] = false; afterAct(s, seat, 'check'); return { ok: true }; }
+    if (mv.a === 'call') { if (o.check) return { ok: false, err: 'Nothing to call - check instead' }; amt = o.call; put(s, seat, amt); s.acted[seat] = true; s.raiseOpen[seat] = false; afterAct(s, seat, s.status[seat] === 'allin' ? 'allin' : 'call', amt); return { ok: true }; }
+    if (mv.a === 'allin') {
+      if (s.stacks[seat] <= 0) return { ok: false, err: 'Invalid action' };
+      if (o.allin <= s.currentBet) { amt = s.stacks[seat]; put(s, seat, amt); s.acted[seat] = true; s.raiseOpen[seat] = false; afterAct(s, seat, 'allin', amt); return { ok: true }; }
+      if (!o.canRaise) { amt = s.stacks[seat]; put(s, seat, amt); s.acted[seat] = true; s.raiseOpen[seat] = false; afterAct(s, seat, 'allin', amt); return { ok: true }; }
+      amt = raiseTo(s, seat, o.allin); afterAct(s, seat, 'allin', amt); return { ok: true };
+    }
+    if (mv.a === 'raise') {
+      if (!o.canRaise) return { ok: false, err: 'You cannot raise now' };
+      var to = Math.floor(+mv.to); if (!(to >= o.raiseMin && to <= o.raiseMax)) return { ok: false, err: 'Raise must be between ' + o.raiseMin + ' and ' + o.raiseMax };
+      var isAll = to === o.allin, prior = s.currentBet; amt = raiseTo(s, seat, to); afterAct(s, seat, isAll ? 'allin' : (prior > 0 ? 'raise' : 'bet'), amt); return { ok: true };
+    }
+    return { ok: false, err: 'Unknown action' };
+  }
+  function resign(s, seat) { if (s.over || seat < 1 || seat > s.n || !canAct(s, seat)) return; if (seat === s.turn) { s.status[seat] = 'folded'; s.acted[seat] = true; afterAct(s, seat, 'fold'); } else { s.status[seat] = 'folded'; s.acted[seat] = true; log(s, { seat: seat, a: 'fold', amt: 0, street: s.phase }); s.event = { t: 'fold', seat: seat }; s.seq++; advance(s, true); } }
+  function view(s, seat) {
+    var v = {}; for (var k in s) if (k !== 'deck' && k !== 'hands') v[k] = s[k];
+    v.hands = [null];
+    for (var p = 1; p <= s.n; p++) { var show = p === seat || (s.over && s.showdown && live(s, p)); v.hands.push(show && s.hands[p] ? s.hands[p].slice() : null); }
+    v.seat = seat; v.hasCards = []; for (var q = 1; q <= s.n; q++) v.hasCards[q] = s.status[q] !== 'out';
+    if (seat >= 1 && seat <= s.n && s.hands[seat] && live(s, seat)) v.myHand = s.board.length ? describe(evalCards(s.hands[seat].concat(s.board))) : '';
+    return v;
+  }
+  /* stacks for the next hand: carry over; busted players re-buy (virtual) */
+  function nextStacks(s) { var a = [0]; for (var p = 1; p <= s.n; p++) a.push(s.stacks[p] < s.bb ? s.buyin : s.stacks[p]); return a; }
+  var API = { id: 'holdem', name: "Texas Hold'em", nSeats: 6, CAT: CAT, rankOf: rankOf, suitOf: suitOf, rankName: rankName, cardName: cardName, evalCards: evalCards, catOf: catOf, describe: describe,
+    newGame: newGame, move: move, resign: resign, view: view, options: options, nextStacks: nextStacks, shuffleDeck: shuffleDeck, liveCount: liveCount };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Holdem = API;
 })();
 
 /* ---- engines ---- */
@@ -1066,9 +1520,11 @@
   var D = R ? require('./doudizhu.js') : GH.Doudizhu;
   var M = R ? require('./mahjong.js') : GH.Mahjong;
   var Z = R ? require('./zhajinhua.js') : GH.Zhajinhua;
+  var CH = R ? require('./chess.js') : GH.Chess;
+  var HE = R ? require('./holdem.js') : GH.Holdem;
   // seats: 每局座位数; multi: 3/4 人游戏(支持电脑补位、一人离开由电脑托管)
-  var SEATS = { gomoku: 2, xiangqi: 2, luzhanqi: 2, doudizhu: 3, mahjong: 4, zhajinhua: 6 };
-  var API = { gomoku: G, xiangqi: X, luzhanqi: L, doudizhu: D, mahjong: M, zhajinhua: Z, list: ['gomoku', 'xiangqi', 'luzhanqi', 'doudizhu', 'mahjong', 'zhajinhua'], SEATS: SEATS };
+  var SEATS = { gomoku: 2, xiangqi: 2, luzhanqi: 2, doudizhu: 3, mahjong: 4, zhajinhua: 6, chess: 2, holdem: 6 };
+  var API = { gomoku: G, xiangqi: X, luzhanqi: L, doudizhu: D, mahjong: M, zhajinhua: Z, chess: CH, holdem: HE, list: ['holdem', 'chess', 'gomoku', 'xiangqi', 'luzhanqi', 'doudizhu', 'mahjong', 'zhajinhua'], SEATS: SEATS };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Engines = API;
 })();
 
@@ -2411,6 +2867,201 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).AIZhajinhua = API;
 })();
 
+/* ---- ai-chess ---- */
+/* Chess AI: negamax alpha-beta with iterative deepening, quiescence search, transposition table, MVV-LVA / killer / history ordering,
+   repetition-aware scoring, and a PST evaluation. Levels: 1 easy (depth 1 + random choice among decent moves), 2 normal (depth 3),
+   3 hard (iterative deepening up to depth 8 within opts.timeMs). computeMove(state, seat, level, opts) -> {from, to, promo} | null */
+(function () {
+  var C = (typeof require === 'function') ? require('./chess.js') : GH.Chess, X = C._;
+  var MATE = 30000;
+  var VAL = [0, 100, 320, 330, 500, 900, 0];
+  var T = {
+    1: [0, 0, 0, 0, 0, 0, 0, 0, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 20, 30, 30, 20, 10, 10, 5, 5, 10, 25, 25, 10, 5, 5, 0, 0, 0, 20, 20, 0, 0, 0, 5, -5, -10, 0, 0, -10, -5, 5, 5, 10, 10, -20, -20, 10, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0],
+    2: [-50, -40, -30, -30, -30, -30, -40, -50, -40, -20, 0, 0, 0, 0, -20, -40, -30, 0, 10, 15, 15, 10, 0, -30, -30, 5, 15, 20, 20, 15, 5, -30, -30, 0, 15, 20, 20, 15, 0, -30, -30, 5, 10, 15, 15, 10, 5, -30, -40, -20, 0, 5, 5, 0, -20, -40, -50, -40, -30, -30, -30, -30, -40, -50],
+    3: [-20, -10, -10, -10, -10, -10, -10, -20, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, 5, 10, 10, 5, 0, -10, -10, 5, 5, 10, 10, 5, 5, -10, -10, 0, 10, 10, 10, 10, 0, -10, -10, 10, 10, 10, 10, 10, 10, -10, -10, 5, 0, 0, 0, 0, 5, -10, -20, -10, -10, -10, -10, -10, -10, -20],
+    4: [0, 0, 0, 0, 0, 0, 0, 0, 5, 10, 10, 10, 10, 10, 10, 5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 5, 5, 0, 0, 0],
+    5: [-20, -10, -10, -5, -5, -10, -10, -20, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, 5, 5, 5, 5, 0, -10, -5, 0, 5, 5, 5, 5, 0, -5, 0, 0, 5, 5, 5, 5, 0, -5, -10, 5, 5, 5, 5, 5, 0, -10, -10, 0, 5, 0, 0, 0, 0, -10, -20, -10, -10, -5, -5, -10, -10, -20],
+    6: [-30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30, -20, -30, -30, -40, -40, -30, -30, -20, -10, -20, -20, -20, -20, -20, -20, -10, 20, 20, 0, 0, 0, 0, 20, 20, 20, 30, 10, 0, 0, 10, 30, 20],
+    7: [-50, -40, -30, -20, -20, -30, -40, -50, -30, -20, -10, 0, 0, -10, -20, -30, -30, -10, 20, 30, 30, 20, -10, -30, -30, -10, 30, 40, 40, 30, -10, -30, -30, -10, 30, 40, 40, 30, -10, -30, -30, -10, 20, 30, 30, 20, -10, -30, -30, -30, 0, 0, 0, 0, -30, -30, -50, -30, -30, -30, -30, -30, -30, -50]
+  };
+  function evaluate(pos) { // from the side to move's point of view
+    var b = pos.b, score = 0, mat = 0, wb = 0, bb = 0, wpf = [0, 0, 0, 0, 0, 0, 0, 0], bpf = [0, 0, 0, 0, 0, 0, 0, 0], s, p, a, r, f;
+    for (s = 0; s < 64; s++) { p = b[s]; if (p && Math.abs(p) !== 6) mat += VAL[Math.abs(p)]; }
+    var endgame = mat < 2600;
+    for (s = 0; s < 64; s++) {
+      p = b[s]; if (!p) continue; a = Math.abs(p); r = s >> 3; f = s & 7;
+      var ti = p > 0 ? (7 - r) * 8 + f : r * 8 + f, pst = a === 6 ? (endgame ? T[7][ti] : T[6][ti]) : T[a][ti];
+      var v = VAL[a] + pst;
+      if (p > 0) { score += v; if (a === 1) wpf[f]++; else if (a === 3) wb++; } else { score -= v; if (a === 1) bpf[f]++; else if (a === 3) bb++; }
+    }
+    if (wb >= 2) score += 30; if (bb >= 2) score -= 30;
+    for (f = 0; f < 8; f++) { if (wpf[f] > 1) score -= 12 * (wpf[f] - 1); if (bpf[f] > 1) score += 12 * (bpf[f] - 1); }
+    // passed pawns
+    for (s = 8; s < 56; s++) {
+      p = b[s]; if (Math.abs(p) !== 1) continue; r = s >> 3; f = s & 7; var passed = true, k, ff, rr;
+      for (ff = Math.max(0, f - 1); ff <= Math.min(7, f + 1) && passed; ff++) for (rr = p > 0 ? r + 1 : r - 1; rr >= 1 && rr <= 6; rr += p > 0 ? 1 : -1) if (b[rr * 8 + ff] === -p) { passed = false; break; }
+      if (passed) { var adv = p > 0 ? r : 7 - r; var bonus = [0, 0, 5, 12, 25, 45, 80, 0][adv]; score += p > 0 ? bonus : -bonus; }
+    }
+    return pos.side === 1 ? score : -score;
+  }
+  var nodes, deadline, stop, tt, killers, hist;
+  function ordScore(pos, m, ttMove, ply) {
+    if (m === ttMove) return 1e7;
+    var from = m & 63, to = (m >> 6) & 63, promo = (m >> 12) & 7, cap = Math.abs(pos.b[to]), mover = Math.abs(pos.b[from]);
+    if (cap || (m >> 15) === 1) return 1e6 + (cap || 1) * 10 - mover + (promo ? 800 : 0);
+    if (promo) return 9e5 + promo;
+    if (killers[ply] && (killers[ply][0] === m || killers[ply][1] === m)) return 8e5;
+    return hist[(pos.side === 1 ? 0 : 4096) + (from << 6) + to] || 0;
+  }
+  function isRep(pos) {
+    var k = pos.keys, n = k.length, cur = k[n - 1], lim = Math.min(pos.half, n - 1);
+    for (var i = 2; i <= lim; i += 2) if (k[n - 1 - i] === cur) return true;
+    return false;
+  }
+  function qsearch(pos, alpha, beta, ply) {
+    nodes++;
+    var stand = evaluate(pos); if (stand >= beta) return stand; if (stand > alpha) alpha = stand;
+    if (ply > 40) return stand;
+    var ms = gen(pos), ki = pos.side === 1 ? 0 : 1, i;
+    ms = ms.map(function (m) { return [ordScore(pos, m, 0, 99), m]; }).sort(function (a, b) { return b[0] - a[0]; });
+    for (i = 0; i < ms.length; i++) {
+      var m = ms[i][1]; X.make(pos, m);
+      if (X.attacked(pos, pos.k[ki], pos.side)) { X.unmake(pos, m); continue; }
+      var sc = -qsearch(pos, -beta, -alpha, ply + 1); X.unmake(pos, m);
+      if (sc >= beta) return sc; if (sc > alpha) alpha = sc;
+    }
+    return alpha;
+  }
+  function gen(pos) { return X.gen(pos, true); }
+  function search(pos, depth, alpha, beta, ply) {
+    if ((++nodes & 2047) === 0 && Date.now() > deadline) stop = true;
+    if (stop) return 0;
+    if (ply > 0 && (isRep(pos) || pos.half >= 100)) return 0;
+    var ki = pos.side === 1 ? 0 : 1, chk = X.attacked(pos, pos.k[ki], -pos.side);
+    if (chk && ply < 40) depth++;
+    if (depth <= 0) return qsearch(pos, alpha, beta, ply);
+    var key = X.posKey(pos), e = tt.get(key), ttMove = 0, a0 = alpha;
+    if (e) { ttMove = e.m; if (e.d >= depth && ply > 0) { if (e.f === 0) return e.s; if (e.f === 1 && e.s >= beta) return e.s; if (e.f === 2 && e.s <= alpha) return e.s; } }
+    var ms = X.gen(pos, false);
+    var sc = ms.map(function (m) { return [ordScore(pos, m, ttMove, ply), m]; }).sort(function (a, b) { return b[0] - a[0]; });
+    var best = -MATE - 1, bestM = 0, legal = 0, i;
+    for (i = 0; i < sc.length; i++) {
+      var m = sc[i][1]; X.make(pos, m);
+      if (X.attacked(pos, pos.k[ki], pos.side)) { X.unmake(pos, m); continue; }
+      legal++;
+      var quiet = !(pos.b[(m >> 6) & 63] !== 0 && false) && sc[i][0] < 8e5, v;
+      if (legal > 4 && depth >= 3 && quiet && !chk) { v = -search(pos, depth - 2, -alpha - 1, -alpha, ply + 1); if (v > alpha) v = -search(pos, depth - 1, -beta, -alpha, ply + 1); }
+      else v = -search(pos, depth - 1, -beta, -alpha, ply + 1);
+      X.unmake(pos, m);
+      if (stop) return 0;
+      if (v > best) { best = v; bestM = m; }
+      if (v > alpha) alpha = v;
+      if (alpha >= beta) {
+        if (sc[i][0] < 8e5) { var kk = killers[ply] || (killers[ply] = [0, 0]); if (kk[0] !== m) { kk[1] = kk[0]; kk[0] = m; } hist[(pos.side === 1 ? 0 : 4096) + ((m & 63) << 6) + ((m >> 6) & 63)] = (hist[(pos.side === 1 ? 0 : 4096) + ((m & 63) << 6) + ((m >> 6) & 63)] || 0) + depth * depth; }
+        break;
+      }
+    }
+    if (!legal) return chk ? -MATE + ply : 0;
+    if (tt.size > 400000) tt.clear();
+    tt.set(key, { d: depth, s: best, f: best <= a0 ? 2 : best >= beta ? 1 : 0, m: bestM });
+    return best;
+  }
+  function rootScores(pos, depth, ms) { // full-window score for each root move (used by easy / normal)
+    var ki = pos.side === 1 ? 0 : 1, out = [];
+    for (var i = 0; i < ms.length; i++) { var m = ms[i]; X.make(pos, m); var v = (pos.half >= 100 || isRep(pos)) ? 0 : -search(pos, depth - 1, -MATE, MATE, 1); X.unmake(pos, m); out.push([v, m]); }
+    return out;
+  }
+  function computeMove(state, seat, level, opts) {
+    opts = opts || {}; if (state.over) return null;
+    var pos = X.posFromState(state), legal = X.legalMoves(pos); if (!legal.length) return null;
+    if (legal.length === 1) return X.moveToObj(legal[0]);
+    nodes = 0; stop = false; tt = new Map(); killers = []; hist = {};
+    var best = legal[0], i;
+    if (level <= 2) {
+      deadline = Date.now() + (opts.timeMs || 4000) * 2;
+      var depth = level === 1 ? 1 : 3, sc = rootScores(pos, depth, legal);
+      sc.sort(function (a, b) { return b[0] - a[0]; });
+      var margin = level === 1 ? 140 : 12, pool = sc.filter(function (x) { return x[0] >= sc[0][0] - margin; });
+      if (level === 1 && Math.random() < 0.15) pool = sc.slice(0, Math.min(sc.length, 6)); // occasional slip
+      best = pool[Math.floor(Math.random() * pool.length)][1];
+      return X.moveToObj(best);
+    }
+    deadline = Date.now() + (opts.timeMs || 2000);
+    var maxD = opts.maxDepth || 8, bestScore = 0;
+    for (var d = 1; d <= maxD; d++) {
+      var alpha = -MATE - 1, beta = MATE + 1, iterBest = 0, iterScore = -MATE - 1, ki = pos.side === 1 ? 0 : 1;
+      var ttm = tt.get(X.posKey(pos)); var ord = legal.map(function (m) { return [m === best ? 1e9 : ordScore(pos, m, ttm ? ttm.m : 0, 0), m]; }).sort(function (a, b) { return b[0] - a[0]; });
+      for (i = 0; i < ord.length; i++) {
+        var m = ord[i][1]; X.make(pos, m);
+        var v = (pos.half >= 100 || isRep(pos)) ? 0 : -search(pos, d - 1, -beta, -alpha, 1); X.unmake(pos, m);
+        if (stop) break;
+        if (v > iterScore) { iterScore = v; iterBest = m; } if (v > alpha) alpha = v;
+      }
+      if (stop) { if (iterBest && d > 1 && iterScore > bestScore - 150) best = iterBest; break; } // use a partial iteration only if it is not worse
+      best = iterBest; bestScore = iterScore;
+      if (Math.abs(bestScore) > MATE - 100 || Date.now() > deadline - (opts.timeMs || 2000) * 0.55) break;
+    }
+    return X.moveToObj(best);
+  }
+  var API = { computeMove: computeMove, evaluate: evaluate, search: search, _stats: function () { return nodes; } };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).AIChess = API;
+})();
+
+/* ---- ai-holdem ---- */
+/* Texas Hold'em AI (virtual chips). Monte-Carlo equity vs random opponent hands, compared with pot odds.
+   Level 1: loose / noisy calling station; 2: solid equity player; 3: adds value-bet sizing, semi-bluffs, and stack-aware shoves.
+   computeMove(view, seat, level, opts) -> {a, to?} */
+(function () {
+  var H = (typeof require === 'function') ? require('./holdem.js') : GH.Holdem;
+  function equity(s, seat, trials, deadline) {
+    var mine = s.hands[seat]; if (!mine) return 0.3;
+    var used = {}, i; mine.forEach(function (c) { used[c] = 1; }); s.board.forEach(function (c) { used[c] = 1; });
+    var rest = []; for (i = 0; i < 52; i++) if (!used[i]) rest.push(i);
+    var opp = 0; for (var p = 1; p <= s.n; p++) if (p !== seat && (s.status[p] === 'active' || s.status[p] === 'allin')) opp++;
+    if (!opp) return 1;
+    var need = 5 - s.board.length, win = 0, done = 0, len = rest.length;
+    for (var t = 0; t < trials; t++) {
+      if ((t & 31) === 31 && deadline && Date.now() > deadline) break;
+      var k = need + opp * 2; // partial Fisher-Yates
+      for (i = 0; i < k; i++) { var j = i + Math.floor(Math.random() * (len - i)), x = rest[i]; rest[i] = rest[j]; rest[j] = x; }
+      var board = s.board.concat(rest.slice(0, need)), my = H.evalCards(mine.concat(board)), best = -1, ties = 1, beaten = true;
+      for (var o = 0; o < opp; o++) { var sc = H.evalCards([rest[need + o * 2], rest[need + o * 2 + 1]].concat(board)); if (sc > my) { beaten = false; break; } if (sc === my) ties++; }
+      if (beaten) win += 1 / ties; done++;
+    }
+    return done ? win / done : 0.3;
+  }
+  function computeMove(s, seat, level, opts) {
+    opts = opts || {}; var o = H.options(s, seat); if (!o.turn) return null;
+    var trials = level === 1 ? 120 : level === 2 ? 300 : 600, eq = equity(s, seat, trials, Date.now() + (opts.timeMs || 250));
+    var pot = s.pot, need = o.call, stack = s.stacks[seat], oppN = 0, p;
+    for (p = 1; p <= s.n; p++) if (p !== seat && s.status[p] === 'active') oppN++;
+    if (level === 1) eq = Math.max(0, Math.min(1, eq + (Math.random() - 0.5) * 0.3));
+    var odds = need > 0 ? need / (pot + need) : 0, r = Math.random();
+    function raiseBy(frac) {
+      if (!o.canRaise) return need > 0 ? { a: 'call' } : { a: 'check' };
+      var to = Math.round(s.currentBet + Math.max(s.minRaise, (pot + need) * frac)); to = Math.max(o.raiseMin, Math.min(o.raiseMax, to));
+      if (to >= o.raiseMax || (o.raiseMax - to) < s.bb * 2) return { a: 'allin' };
+      return { a: 'raise', to: to };
+    }
+    var committed = need > 0 && need >= stack * 0.4; // calling is a big part of my stack
+    if (need === 0) {
+      if (level === 1) return eq > 0.7 && r < 0.4 ? raiseBy(0.5) : { a: 'check' };
+      if (eq > 0.8) return r < 0.85 ? raiseBy(0.75 + r * 0.3) : { a: 'check' }; // sometimes slow-play
+      if (eq > (level === 3 ? 0.58 : 0.64) - 0.04 * Math.max(0, 2 - oppN)) return raiseBy(level === 3 ? 0.5 : 0.4);
+      if (level === 3 && oppN <= 2 && r < 0.1 && s.phase !== 'preflop') return raiseBy(0.6); // occasional bluff / probe
+      return { a: 'check' };
+    }
+    var margin = level === 1 ? -0.04 : level === 2 ? 0.05 : 0.03;
+    if (eq > 0.85 || (level === 3 && committed && eq > odds + 0.12 && eq > 0.5)) return eq > 0.88 && o.canRaise ? (r < 0.5 ? { a: 'allin' } : raiseBy(1)) : { a: 'call' };
+    if (eq > 0.68 + (oppN > 2 ? 0.05 : 0) && level >= 2 && r < 0.6) return raiseBy(0.7);
+    if (eq > odds + margin) return { a: 'call' };
+    if (level === 3 && need <= s.bb && r < 0.12 && oppN <= 2) return { a: 'call' }; // cheap float
+    return { a: 'fold' };
+  }
+  var API = { computeMove: computeMove, equity: equity };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).AIHoldem = API;
+})();
+
 /* ---- ai ---- */
 /* 电脑 AI 总入口。level: 1简单 2普通 3困难;opts.timeMs 为困难档的思考时限。
    五子棋/象棋/军棋/斗地主/麻将的困难档在 ai-*.js;简单/普通档保持第一期的启发式(五子棋、象棋、军棋)。
@@ -2427,6 +3078,8 @@
   var AID = req ? require('./ai-doudizhu.js') : GH.AIDoudizhu;
   var AIM = req ? require('./ai-mahjong.js') : GH.AIMahjong;
   var AIZ = req ? require('./ai-zhajinhua.js') : GH.AIZhajinhua;
+  var AICH = req ? require('./ai-chess.js') : GH.AIChess;
+  var AIH = req ? require('./ai-holdem.js') : GH.AIHoldem;
   var N = 15;
   function rnd(n) { return Math.floor(Math.random() * n); }
 
@@ -2639,6 +3292,8 @@
     if (game === 'doudizhu') return AID.computeMove(state, seat, level, opts);
     if (game === 'mahjong') return AIM.computeMove(state, seat, level, opts);
     if (game === 'zhajinhua') return AIZ.computeMove(state, seat, level, opts);
+    if (game === 'chess') return AICH.computeMove(state, seat, level, opts);
+    if (game === 'holdem') return AIH.computeMove(state, seat, level, opts);
     if (game === 'luzhanqi') { var lv = Luzhanqi.view(state, seat); return level >= 3 ? AIL.hardMove(lv, seat, opts) : luzhanqiMove(lv, seat, level); }
     return null;
   }

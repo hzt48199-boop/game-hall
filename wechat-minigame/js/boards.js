@@ -3,10 +3,13 @@
   var req = typeof require === 'function';
   var Luz = req ? require('./luzhanqi.js') : GH.Luzhanqi;
   var Xq = req ? require('./xiangqi.js') : GH.Xiangqi;
-  var FONT = '"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif';
+  var Ch = req ? require('./chess.js') : GH.Chess;
+  var I = req ? require('./i18n.js') : GH.I18n;
+  var FONT = '"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Segoe UI Symbol","Noto Sans Symbols 2","DejaVu Sans",sans-serif';
   function circle(ctx, x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); }
   function rrect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r); ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r); ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r); ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath(); }
-  function text(ctx, s, x, y, size, color, bold, align) { ctx.fillStyle = color; ctx.font = (bold ? 'bold ' : '') + size + 'px ' + FONT; ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y); }
+  /* every drawn string goes through the i18n dictionary (English source text -> current language); maxW optionally squeezes long text */
+  function text(ctx, s, x, y, size, color, bold, align, maxW) { ctx.fillStyle = color; ctx.font = (bold ? 'bold ' : '') + size + 'px ' + FONT; ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle'; s = I.t(s); if (maxW) ctx.fillText(s, x, y, maxW); else ctx.fillText(s, x, y); }
 
   /* ---------------- 五子棋 ---------------- */
   var gomoku = {
@@ -34,6 +37,7 @@
   };
 
   /* ---------------- 中国象棋 ---------------- */
+  var XQ_EN = { K: 'G', A: 'A', B: 'E', N: 'H', R: 'R', C: 'C', P: 'S', k: 'G', a: 'A', b: 'E', n: 'H', r: 'R', c: 'C', p: 'S' };
   var XQ_NAME = { K: '帅', A: '仕', B: '相', N: '马', R: '车', C: '炮', P: '兵', k: '将', a: '士', b: '象', n: '马', r: '车', c: '炮', p: '卒' };
   function xqScr(seat, r, c) { return seat === 1 ? [r, c] : [9 - r, 8 - c]; }
   var xiangqi = {
@@ -58,7 +62,7 @@
       [[0, 3, 2, 5], [0, 5, 2, 3], [7, 3, 9, 5], [7, 5, 9, 3]].forEach(function (q) { var p1 = self.pos(gm, q[0], q[1]), p2 = self.pos(gm, q[2], q[3]); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); });
       ctx.stroke();
       var mid = self.pos(gm, 4.5, 4);
-      text(ctx, '楚 河           汉 界', mid[0], mid[1], c * 0.5, '#5a3a14', true);
+      text(ctx, I.lang === 'zh' ? '楚 河           汉 界' : 'RIVER', mid[0], mid[1], c * 0.5, '#5a3a14', true);
       // 最后一步
       if (s.last) {
         [[s.last.fr, s.last.fc], [s.last.tr, s.last.tc]].forEach(function (q) { var sc = xqScr(seat, q[0], q[1]), p = self.pos(gm, sc[0], sc[1]); ctx.fillStyle = 'rgba(255,214,0,0.45)'; ctx.fillRect(p[0] - c / 2 + 2, p[1] - c / 2 + 2, c - 4, c - 4); });
@@ -70,7 +74,7 @@
         circle(ctx, p[0], p[1], c * 0.43); ctx.fillStyle = '#f7e6c0'; ctx.fill();
         ctx.strokeStyle = red ? '#b71c1c' : '#212121'; ctx.lineWidth = 2; ctx.stroke();
         circle(ctx, p[0], p[1], c * 0.36); ctx.lineWidth = 1; ctx.stroke();
-        text(ctx, XQ_NAME[ch], p[0], p[1] + 1, c * 0.5, red ? '#c62828' : '#111', true);
+        text(ctx, I.lang === 'zh' ? XQ_NAME[ch] : XQ_EN[ch], p[0], p[1] + 1, c * 0.5, red ? '#c62828' : '#111', true);
         if (g.sel && g.sel.r === r && g.sel.c === cc) { circle(ctx, p[0], p[1], c * 0.47); ctx.strokeStyle = '#1e88e5'; ctx.lineWidth = 3; ctx.stroke(); }
       }
       (g.legal || []).forEach(function (m) { var sp = xqScr(seat, m.tr, m.tc), p = self.pos(gm, sp[0], sp[1]); circle(ctx, p[0], p[1], s.board[m.tr][m.tc] ? c * 0.47 : c * 0.12); if (s.board[m.tr][m.tc]) { ctx.strokeStyle = '#e53935'; ctx.lineWidth = 3; ctx.stroke(); } else { ctx.fillStyle = 'rgba(30,136,229,0.8)'; ctx.fill(); } });
@@ -94,7 +98,7 @@
       rrect(ctx, pos[0] - w / 2, pos[1] - h / 2, w, h, 5);
       ctx.fillStyle = t === '?' ? color : '#fbf0d0'; ctx.fill(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
       if (t === '?') text(ctx, '?', pos[0], pos[1] + 1, gm.cs * 0.4, '#ffe0b2', true);
-      else text(ctx, Luz.TYPES[t].n, pos[0], pos[1] + 1, gm.cs * 0.36, color, true);
+      else text(ctx, Luz.TYPES[t].n, pos[0], pos[1] + 1, gm.cs * 0.36, color, true, 'center', w - 4);
       if (opts && opts.sel) { rrect(ctx, pos[0] - w / 2 - 3, pos[1] - h / 2 - 3, w + 6, h + 6, 7); ctx.strokeStyle = '#ffd600'; ctx.lineWidth = 3; ctx.stroke(); }
     },
     draw: function (ctx, rect, g) {
@@ -110,7 +114,7 @@
       }, 1.5, '#55603f');
       segs(function (r, c) { if (c < 4 && Luz.railEdge(r, c, r, c + 1)) line(r, c, r, c + 1); if (r < 11 && Luz.railEdge(r, c, r + 1, c)) line(r, c, r + 1, c); }, 5, '#6d6d6d');
       segs(function (r, c) { if (c < 4 && Luz.railEdge(r, c, r, c + 1)) line(r, c, r, c + 1); if (r < 11 && Luz.railEdge(r, c, r + 1, c)) line(r, c, r + 1, c); }, 2, '#e8e8e8');
-      var mid = this.pos(gm, 5.5, 1); text(ctx, '山', mid[0], mid[1], cs * 0.4, '#556b2f', true); mid = this.pos(gm, 5.5, 3); text(ctx, '山', mid[0], mid[1], cs * 0.4, '#556b2f', true);
+      var mid = this.pos(gm, 5.5, 1); text(ctx, '\u25b2', mid[0], mid[1], cs * 0.4, '#556b2f', true); mid = this.pos(gm, 5.5, 3); text(ctx, '\u25b2', mid[0], mid[1], cs * 0.4, '#556b2f', true);
       // 站点: 行营(圆)、大本营(粗框)
       for (r = 0; r < 12; r++) for (c = 0; c < 5; c++) {
         var sp = lzScr(seat, r, c), p = this.pos(gm, sp[0], sp[1]);
@@ -138,6 +142,37 @@
       var a = lzScr(g.seat, sr, sc); return { r: a[0], c: a[1], sr: sr, sc: sc };
     }
   };
-  var API = { gomoku: gomoku, xiangqi: xiangqi, luzhanqi: lz, text: text, rrect: rrect, circle: circle, FONT: FONT };
+
+  /* ---------------- International Chess ---------------- */
+  var CH_GLYPH = ['', '\u265f\ufe0e', '\u265e\ufe0e', '\u265d\ufe0e', '\u265c\ufe0e', '\u265b\ufe0e', '\u265a\ufe0e'];
+  var chess = {
+    geom: function (rect) { var S = Math.min(rect.w - 16, rect.h - 4), cell = S / 8; return { x0: rect.x + (rect.w - S) / 2, y0: rect.y + (rect.h - S) / 2, S: S, cell: cell }; },
+    scr: function (seat, sq) { var r = sq >> 3, f = sq & 7; return seat === 2 ? [r, 7 - f] : [7 - r, f]; }, // [screen row, screen col]
+    sqAt: function (seat, sr, sc) { return seat === 2 ? sr * 8 + (7 - sc) : (7 - sr) * 8 + sc; },
+    draw: function (ctx, rect, g) {
+      var gm = this.geom(rect), s = g.state, c = gm.cell, seat = g.seat === 2 ? 2 : 1, self = this, sq, i;
+      for (var r = 0; r < 8; r++) for (var f = 0; f < 8; f++) { ctx.fillStyle = (r + f) % 2 === 0 ? '#f0d9b5' : '#b58863'; ctx.fillRect(gm.x0 + f * c, gm.y0 + r * c, c, c); }
+      for (i = 0; i < 8; i++) { // coordinates
+        var fl = seat === 1 ? i : 7 - i, rk = seat === 1 ? 7 - i : i;
+        text(ctx, String.fromCharCode(97 + fl), gm.x0 + (i + 0.86) * c, gm.y0 + 7.88 * c, c * 0.17, i % 2 === 0 ? '#f0d9b5' : '#b58863', true);
+        text(ctx, String(rk + 1), gm.x0 + 0.1 * c, gm.y0 + (i + 0.14) * c, c * 0.17, i % 2 === 0 ? '#b58863' : '#f0d9b5', true);
+      }
+      if (s.last) [s.last.from, s.last.to].forEach(function (q) { var p = self.scr(seat, q); ctx.fillStyle = 'rgba(255,214,0,0.42)'; ctx.fillRect(gm.x0 + p[1] * c, gm.y0 + p[0] * c, c, c); });
+      if (g.sel !== null && g.sel !== undefined && g.sel >= 0) { var sp = this.scr(seat, g.sel); ctx.fillStyle = 'rgba(30,136,229,0.45)'; ctx.fillRect(gm.x0 + sp[1] * c, gm.y0 + sp[0] * c, c, c); }
+      if (s.check && !s.over) { var ks = -1; for (sq = 0; sq < 64; sq++) if (s.board[sq] === (s.turn === 1 ? 6 : -6)) ks = sq; if (ks >= 0) { var kp = this.scr(seat, ks); ctx.fillStyle = 'rgba(229,57,53,0.55)'; ctx.fillRect(gm.x0 + kp[1] * c, gm.y0 + kp[0] * c, c, c); } }
+      for (sq = 0; sq < 64; sq++) {
+        var pc = s.board[sq]; if (!pc) continue; var p = this.scr(seat, sq), cx = gm.x0 + (p[1] + 0.5) * c, cy = gm.y0 + (p[0] + 0.5) * c, white = pc > 0;
+        ctx.font = Math.round(c * 0.82) + 'px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = Math.max(1.5, c * 0.045); ctx.lineJoin = 'round'; ctx.strokeStyle = white ? '#222' : '#e9e2d0'; ctx.strokeText(CH_GLYPH[Math.abs(pc)], cx, cy + c * 0.04);
+        ctx.fillStyle = white ? '#fffdf2' : '#1b1b1b'; ctx.fillText(CH_GLYPH[Math.abs(pc)], cx, cy + c * 0.04);
+      }
+      (g.legal || []).forEach(function (m) { var p = self.scr(seat, m.to); circle(ctx, gm.x0 + (p[1] + 0.5) * c, gm.y0 + (p[0] + 0.5) * c, s.board[m.to] ? c * 0.46 : c * 0.14); if (s.board[m.to] || (s.board[m.from] && Math.abs(s.board[m.from]) === 1 && (m.from & 7) !== (m.to & 7))) { ctx.strokeStyle = 'rgba(229,57,53,0.9)'; ctx.lineWidth = 3; ctx.stroke(); } else { ctx.fillStyle = 'rgba(30,136,229,0.75)'; ctx.fill(); } });
+    },
+    cellAt: function (px, py, rect, g) {
+      var gm = this.geom(rect), sc = Math.floor((px - gm.x0) / gm.cell), sr = Math.floor((py - gm.y0) / gm.cell);
+      if (sc < 0 || sr < 0 || sc >= 8 || sr >= 8) return null; return { sq: this.sqAt(g.seat === 2 ? 2 : 1, sr, sc) };
+    }
+  };
+  var API = { gomoku: gomoku, xiangqi: xiangqi, luzhanqi: lz, chess: chess, text: text, rrect: rrect, circle: circle, FONT: FONT };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Boards = API;
 })();

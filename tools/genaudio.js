@@ -221,3 +221,12 @@ sfx2('laugh.wav', 1.5, b => { // 哈哈哈: 4 声递减、音高下落的"啊"
 sfx2('sigh.wav', 1.4, b => { // 唉: 由"啊"滑向"咿"的下落叹息 + 气声
   formantVoice(b, SR2, 0, 1.2, u => 250 - 80 * u, u => [[800 - 480 * u, 100, 1], [1200 + 900 * u, 120, 0.6], [2600 + 100 * u, 170, 0.25]], 0.75, 2.2);
 });
+
+/* ---- Phase 4 additions: International Chess + Texas Hold'em (appended at the end so earlier sounds stay identical) ---- */
+sfx2('chessmove.wav', 0.28, b => { noiseBurst(b, SR2, 0, 0.03, 0.8, 120, 0.5); tone(b, SR2, 0, 0.26, 190, 0.9, { harm: [1, 0.6, 0.25], dec: 20, atk: 0.0008, glide: -0.2 }); }); // piece set down on a wooden board
+sfx2('chesscap.wav', 0.5, b => { noiseBurst(b, SR2, 0, 0.05, 1.0, 70, 0.4); tone(b, SR2, 0, 0.3, 150, 1.0, { harm: [1, 0.7, 0.4], dec: 14, atk: 0.0008, glide: -0.3 }); noiseBurst(b, SR2, 0.09, 0.04, 0.7, 90, 0.5); tone(b, SR2, 0.09, 0.3, 230, 0.6, { harm: [1, 0.5], dec: 16, atk: 0.001 }); }); // capture: two stacked knocks
+sfx2('chesscheck.wav', 0.7, b => { [0, 0.16].forEach((t, i) => { tone(b, SR2, t, 0.3, i ? 988 : 740, 0.6, { harm: [1, 0.4, 0.15], dec: 9, atk: 0.002 }); }); noiseBurst(b, SR2, 0, 0.03, 0.5, 120, 0.5); tone(b, SR2, 0.32, 0.35, 1175, 0.35, { harm: [1, 0.3], dec: 8, atk: 0.002 }); }); // check / checkmate alert
+sfx2('knock.wav', 0.36, b => { [0, 0.14].forEach(t => { noiseBurst(b, SR2, t, 0.025, 0.7, 150, 0.5); tone(b, SR2, t, 0.16, 210, 0.8, { harm: [1, 0.5], dec: 22, atk: 0.0006, glide: -0.15 }); }); }); // check: two knuckle raps on the table
+sfx2('allin.wav', 1.0, b => { for (let i = 0; i < 9; i++) { const t = i * 0.055; noiseBurst(b, SR2, t, 0.02, 0.55, 250, 0.7); tone(b, SR2, t, 0.14, 1800 + i * 210, 0.3, { harm: [1, 0.5, 0.3], dec: 26, atk: 0.0008 }); } tone(b, SR2, 0.55, 0.45, 392, 0.5, { harm: [1, 0.4, 0.2], dec: 5, atk: 0.003 }); tone(b, SR2, 0.55, 0.45, 587, 0.35, { harm: [1, 0.3], dec: 5, atk: 0.003 }); }); // all-in: big chip cascade + swell
+sfx2('flip.wav', 0.3, b => { noiseBurst(b, SR2, 0, 0.07, 0.6, 45, 0.25); noiseBurst(b, SR2, 0.08, 0.04, 0.8, 110, 0.6); tone(b, SR2, 0.08, 0.14, 520, 0.2, { harm: [1], dec: 30, atk: 0.001, glide: -0.3 }); }); // community card turned over
+sfx2('potwin.wav', 1.2, b => { for (let i = 0; i < 6; i++) { const t = i * 0.07; noiseBurst(b, SR2, t, 0.02, 0.5, 250, 0.7); tone(b, SR2, t, 0.12, 2400 - i * 120, 0.3, { harm: [1, 0.5], dec: 30, atk: 0.0008 }); } [523, 659, 784].forEach((f, i) => tone(b, SR2, 0.45 + i * 0.1, 0.55, f, 0.5, { harm: [1, 0.4, 0.15], dec: 4.5, atk: 0.003 })); }); // winning the pot: chips sweep + chime

@@ -13,6 +13,8 @@
   var AID = req ? require('./ai-doudizhu.js') : GH.AIDoudizhu;
   var AIM = req ? require('./ai-mahjong.js') : GH.AIMahjong;
   var AIZ = req ? require('./ai-zhajinhua.js') : GH.AIZhajinhua;
+  var AICH = req ? require('./ai-chess.js') : GH.AIChess;
+  var AIH = req ? require('./ai-holdem.js') : GH.AIHoldem;
   var N = 15;
   function rnd(n) { return Math.floor(Math.random() * n); }
 
@@ -225,6 +227,8 @@
     if (game === 'doudizhu') return AID.computeMove(state, seat, level, opts);
     if (game === 'mahjong') return AIM.computeMove(state, seat, level, opts);
     if (game === 'zhajinhua') return AIZ.computeMove(state, seat, level, opts);
+    if (game === 'chess') return AICH.computeMove(state, seat, level, opts);
+    if (game === 'holdem') return AIH.computeMove(state, seat, level, opts);
     if (game === 'luzhanqi') { var lv = Luzhanqi.view(state, seat); return level >= 3 ? AIL.hardMove(lv, seat, opts) : luzhanqiMove(lv, seat, level); }
     return null;
   }

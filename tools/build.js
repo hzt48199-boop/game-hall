@@ -7,7 +7,7 @@ for (const target of ['web/js', 'wechat-minigame/js']) {
   for (const dir of ['shared', 'client']) for (const f of fs.readdirSync(path.join(root, dir))) if (f.endsWith('.js')) fs.copyFileSync(path.join(root, dir, f), path.join(root, target, f));
 }
 // ---- AI Worker 包(把规则引擎 + 全部 AI 打成一个脚本,避免依赖 require)----
-const order = ['gomoku', 'xiangqi', 'luzhanqi', 'doudizhu', 'mahjong', 'zhajinhua', 'engines', 'ai-gomoku', 'ai-xiangqi', 'ai-luzhanqi', 'ai-doudizhu', 'ai-mahjong', 'ai-zhajinhua', 'ai'];
+const order = ['gomoku', 'xiangqi', 'luzhanqi', 'doudizhu', 'mahjong', 'zhajinhua', 'chess', 'holdem', 'engines', 'ai-gomoku', 'ai-xiangqi', 'ai-luzhanqi', 'ai-doudizhu', 'ai-mahjong', 'ai-zhajinhua', 'ai-chess', 'ai-holdem', 'ai'];
 const body = order.map(n => '/* ---- ' + n + ' ---- */\n' + fs.readFileSync(path.join(root, 'shared', n + '.js'), 'utf8')).join('\n');
 function bundle(glue) {
   return '/* 自动生成(tools/build.js): AI Worker 包 */\n(function () {\n  var GH = {}, self = { GH: GH }, require, module, exports;\n' + body + '\n' + glue + '\n})();\n';

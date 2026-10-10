@@ -4,7 +4,7 @@
    牌型: 单张 对子 三张 三带一 三带二 顺子(>=5) 连对(>=3) 飞机(>=2 个连续三张,可带同数量单张或对子) 四带二(两单/两对) 炸弹 火箭。
    计分: 底分 × 叫分 × 2^(炸弹数+火箭数) × (春天/反春 ×2);地主赢两个农民各付、输各得。 */
 (function () {
-  var NAMES = { 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10', 11: 'J', 12: 'Q', 13: 'K', 14: 'A', 15: '2', 16: '小王', 17: '大王' };
+  var NAMES = { 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10', 11: 'J', 12: 'Q', 13: 'K', 14: 'A', 15: '2', 16: 'Small Joker', 17: 'Big Joker' };
   function rankOf(id) { return id < 52 ? 3 + (id >> 2) : 16 + (id - 52); }
   function suitOf(id) { return id < 52 ? id & 3 : 4; }
   function sortHand(h) { return h.sort(function (a, b) { return rankOf(b) - rankOf(a) || a - b; }); }
@@ -102,16 +102,16 @@
     for (q = 1; q <= 3; q++) {
       if (q === ll) s.scores[q] = landlordWin ? 2 * per : -2 * per; else s.scores[q] = landlordWin ? -per : per;
     }
-    s.reason = (landlordWin ? '地主获胜' : '农民获胜') + (spring ? (landlordWin ? '(春天 ×2)' : '(反春 ×2)') : '') + ',倍数 ' + s.finalMult;
+    s.reason = (landlordWin ? 'Landlord wins' : 'Farmers win') + (spring ? (landlordWin ? ' (Spring x2)' : ' (Reverse spring x2)') : '') + ', multiplier ' + s.finalMult;
     s.event = { t: 'win', seat: winSeat }; s.seq++;
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '本局已结束' };
-    if (seat !== s.turn) return { ok: false, err: '还没轮到你' };
-    if (!mv || typeof mv !== 'object') return { ok: false, err: '操作无效' };
+    if (s.over) return { ok: false, err: 'The hand is over' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
+    if (!mv || typeof mv !== 'object') return { ok: false, err: 'Invalid action' };
     if (s.phase === 'bid') {
-      var b = mv.bid; if (!Number.isInteger(b) || b < 0 || b > 3) return { ok: false, err: '叫分无效' };
-      if (b !== 0 && b <= s.bid.high) return { ok: false, err: '叫分必须高于当前的 ' + s.bid.high + ' 分' };
+      var b = mv.bid; if (!Number.isInteger(b) || b < 0 || b > 3) return { ok: false, err: 'Invalid bid' };
+      if (b !== 0 && b <= s.bid.high) return { ok: false, err: 'Bid must be higher than ' + s.bid.high };
       s.bid.bids[seat] = b; s.bid.count++; if (b > 0) { s.bid.high = b; s.bid.highSeat = seat; }
       s.event = { t: 'bid', seat: seat, v: b }; s.seq++;
       if (b === 3 || s.bid.count >= 3) {
@@ -127,16 +127,16 @@
     }
     // 出牌阶段
     if (mv.pass) {
-      if (!s.last) return { ok: false, err: '你是首家,必须出牌' };
+      if (!s.last) return { ok: false, err: 'You lead - you must play' };
       s.passes++; s.plays.push({ seat: seat, pass: true }); s.event = { t: 'pass', seat: seat }; s.seq++;
       if (s.passes >= 2) { s.last = null; s.passes = 0; }
       s.turn = seat % 3 + 1; return { ok: true, kind: 'pass' };
     }
-    var cards = mv.cards; if (!Array.isArray(cards) || !cards.length || cards.length > 20 || cards.some(function (x) { return !Number.isInteger(x) || x < 0 || x > 53; })) return { ok: false, err: '出牌无效' };
-    if (new Set(cards).size !== cards.length) return { ok: false, err: '出牌无效' };
-    var rest = removeCards(s.hands[seat], cards); if (!rest) return { ok: false, err: '你没有这些牌' };
-    var cl = classify(cards); if (!cl) return { ok: false, err: '不是合法牌型' };
-    if (s.last && !beats(cl, s.last.cl)) return { ok: false, err: '压不过上一手' };
+    var cards = mv.cards; if (!Array.isArray(cards) || !cards.length || cards.length > 20 || cards.some(function (x) { return !Number.isInteger(x) || x < 0 || x > 53; })) return { ok: false, err: 'Invalid play' };
+    if (new Set(cards).size !== cards.length) return { ok: false, err: 'Invalid play' };
+    var rest = removeCards(s.hands[seat], cards); if (!rest) return { ok: false, err: 'You do not have those cards' };
+    var cl = classify(cards); if (!cl) return { ok: false, err: 'Not a valid combination' };
+    if (s.last && !beats(cl, s.last.cl)) return { ok: false, err: 'That does not beat the last play' };
     var wasLast = !!s.last;
     s.hands[seat] = rest; s.counts[seat] = rest.length; s.playedCount[seat]++;
     s.last = { seat: seat, cards: sortHand(cards.slice()), cl: cl }; s.passes = 0;
@@ -147,7 +147,7 @@
     if (!rest.length) { finish(s, seat); return { ok: true, kind: 'win' }; }
     s.turn = seat % 3 + 1; return { ok: true, kind: kind };
   }
-  function resign(s, seat) { if (s.over) return; if (s.phase === 'bid') { s.over = true; s.phase = 'over'; s.reason = '有人离开'; s.winners = []; return; } var ll = s.landlord; finish(s, seat === ll ? (ll % 3 + 1) : ll); s.reason = '有人离开,' + s.reason; }
+  function resign(s, seat) { if (s.over) return; if (s.phase === 'bid') { s.over = true; s.phase = 'over'; s.reason = 'A player left'; s.winners = []; return; } var ll = s.landlord; finish(s, seat === ll ? (ll % 3 + 1) : ll); s.reason = 'A player left, ' + s.reason; }
   /* 视角: 只显示自己的手牌;其他人只给张数;地主确定后底牌公开 */
   function view(s, seat) {
     var v = {};
@@ -193,7 +193,7 @@
     if (g[16] && g[17]) add([g[16][0], g[17][0]]);
     return out;
   }
-  var API = { id: 'doudizhu', name: '斗地主', nSeats: 3, NAMES: NAMES, rankOf: rankOf, suitOf: suitOf, sortHand: sortHand, classify: classify, beats: beats, newGame: newGame, move: move, resign: resign, view: view,
+  var API = { id: 'doudizhu', name: 'Dou Dizhu', nSeats: 3, NAMES: NAMES, rankOf: rankOf, suitOf: suitOf, sortHand: sortHand, classify: classify, beats: beats, newGame: newGame, move: move, resign: resign, view: view,
     genMoves: genMoves, groupByRank: groupByRank, counts: counts, removeCards: removeCards, shuffleDeck: shuffleDeck };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Doudizhu = API;
 })();

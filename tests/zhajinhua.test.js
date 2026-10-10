@@ -13,7 +13,7 @@ test('牌型识别: 豹子/同花顺/金花/顺子/对子/单张', () => {
   assert.equal(ev([[9, 0], [10, 1], [11, 2]]).cat, 3);
   assert.equal(ev([[9, 0], [9, 1], [3, 2]]).cat, 2);
   assert.equal(ev([[9, 0], [8, 1], [3, 2]]).cat, 1);
-  assert.equal(ev([[9, 0], [8, 1], [3, 2]]).name, '单张');
+  assert.equal(ev([[9, 0], [8, 1], [3, 2]]).name, 'High card');
 });
 test('牌型大小顺序: 豹子 > 同花顺 > 金花 > 顺子 > 对子 > 单张(含最小豹子 > 最大同花顺)', () => {
   const hands = [[[2, 0], [2, 1], [2, 2]], [[12, 0], [13, 0], [14, 0]], [[14, 1], [13, 1], [9, 1]], [[12, 0], [13, 1], [14, 2]], [[14, 0], [14, 1], [13, 2]], [[14, 0], [13, 1], [11, 2]]];
@@ -94,13 +94,13 @@ test('比牌落败 / 弃牌者的牌在结算时不亮;开牌结算时未弃牌�
   const s = game(3, [[[14, 0], [14, 1], [5, 2]], [[13, 0], [13, 1], [5, 2]], [[9, 0], [8, 1], [3, 2]]], { dealer: 3, maxRounds: 1 });
   Z.move(s, 1, { a: 'call' }); Z.move(s, 2, { a: 'fold' }); Z.move(s, 3, { a: 'call' });
   assert.ok(s.over && s.showdown, '封顶开牌'); assert.deepEqual(s.winners, [1]);
-  const v = Z.view(s, 3); assert.deepEqual(v.hands[1], s.cards[1]); assert.equal(v.hands[2], null); assert.equal(v.handNames[1], '对子');
+  const v = Z.view(s, 3); assert.deepEqual(v.hands[1], s.cards[1]); assert.equal(v.hands[2], null); assert.equal(v.handNames[1], 'Pair');
 });
 test('封顶: 超过最大轮数自动开牌,平手平分底池', () => {
   const s = game(3, [[[14, 0], [8, 1], [3, 2]], [[14, 1], [8, 2], [3, 3]], [[2, 0], [4, 1], [7, 2]]], { dealer: 3, maxRounds: 2 });
   for (let i = 0; i < 6; i++) { assert.ok(!s.over || i === 5); if (!s.over) Z.move(s, s.turn, { a: 'call' }); }
   assert.ok(s.over && s.showdown); assert.deepEqual(s.winners.sort(), [1, 2]); assert.equal(s.scores.reduce((a, b) => a + b, 0), 0); assert.equal(s.scores[1], s.scores[2]);
-  assert.ok(/封顶/.test(s.reason));
+  assert.ok(/Round limit/.test(s.reason));
 });
 test('豆不足以跟注时直接开牌;加注 / 比牌只提供买得起的选项', () => {
   const s = game(2, [[[14, 0], [14, 1], [5, 2]], [[13, 0], [13, 1], [5, 2]]], { dealer: 2, stack: 55 });
@@ -108,7 +108,7 @@ test('豆不足以跟注时直接开牌;加注 / 比牌只提供买得起的选�
   assert.equal(Z.move(s, 1, { a: 'raise', unit: 50 }).ok, false);
   Z.move(s, 1, { a: 'raise', unit: 20 }); Z.move(s, 2, { a: 'call' }); assert.equal(s.round, 2); assert.ok(!s.over);
   Z.move(s, 1, { a: 'call' }); Z.move(s, 2, { a: 'call' }); // 各剩 5 豆
-  assert.ok(s.over && s.showdown && /不足/.test(s.reason)); assert.deepEqual(s.winners, [1]); assert.equal(s.scores[1] + s.scores[2], 0);
+  assert.ok(s.over && s.showdown && /cannot afford/.test(s.reason)); assert.deepEqual(s.winners, [1]); assert.equal(s.scores[1] + s.scores[2], 0);
   assert.ok(s.stacks.every(x => x >= 0));
 });
 test('服务端式校验: 越界座位 / 乱格式 / 出局者 / 结束后操作都被拒绝', () => {

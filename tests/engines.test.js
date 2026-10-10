@@ -36,7 +36,7 @@ test('gomoku: 四连不胜;长连(6连)按 5+ 规则获胜', () => {
   playSeq(s, [[1, 5, 0], [2, 6, 9]]);
   assert.equal(s.over, false);
   playSeq(s, [[1, 4, 0]]);
-  assert.ok(s.over); assert.equal(s.winner, 1); assert.equal(s.winLine.length, 6); assert.match(s.reason, /长连/);
+  assert.ok(s.over); assert.equal(s.winner, 1); assert.equal(s.winLine.length, 6); assert.match(s.reason, /overline/);
   assert.equal(G.move(s, 2, { x: 9, y: 9 }).ok, false);
 });
 test('gomoku: 白棋也能赢;结束后不能再落子', () => {
@@ -133,7 +133,7 @@ test('xiangqi: 将死(双车/闷宫)与困毙判负', () => {
   const s = mk([['k', 0, 4], ['K', 9, 3], ['R', 1, 8], ['R', 5, 0]], 1);
   const r = X.move(s, 1, { fr: 5, fc: 0, tr: 0, tc: 0 });
   assert.ok(r.ok && s.check);
-  assert.ok(s.over && s.winner === 1 && s.reason === '将死', s.reason);
+  assert.ok(s.over && s.winner === 1 && s.reason === 'Checkmate', s.reason);
   // 困毙:黑将被围无合法着法但未被将军 → 黑负
   const t = mk([['k', 0, 3], ['K', 9, 5], ['R', 1, 4], ['R', 5, 2]], 1);
   // 黑将(0,3):可去(0,4)(车 R(1,4)控列4)、(1,3)(R 控 1 行)... 先让红走一步保持
@@ -144,7 +144,7 @@ test('xiangqi: 困毙 = 无合法着法判负(构造)', () => {
   // 黑将(0,3);红车(1,4)封 (0,4)? 车在(1,4)控制第4列(含(0,4))和第1行(含(1,3));红车(2,... )
   const t2 = mk([['k', 0, 3], ['K', 9, 5], ['R', 1, 4], ['R', 8, 5]], 1);
   X.move(t2, 1, { fr: 8, fc: 5, tr: 8, tc: 2 });
-  assert.ok(t2.over, '黑方无合法着法'); assert.equal(t2.winner, 1); assert.match(t2.reason, /困毙/);
+  assert.ok(t2.over, '黑方无合法着法'); assert.equal(t2.winner, 1); assert.match(t2.reason, /Stalemate/);
 });
 test('xiangqi: 非法/乱序走法被拒;完整对局随机走子能终止且始终合法', () => {
   const s = X.newGame();
@@ -241,7 +241,7 @@ test('luzhanqi: 夺旗胜利 + 无子可动判负 + 乱序/非法拒绝', () => 
   assert.equal(L.move(s, 2, { fr: 4, fc: 4, tr: 4, tc: 3 }).ok, false, '乱序');
   assert.equal(L.move(s, 1, { fr: 1, fc: 1, tr: 5, tc: 5 }).ok, false);
   const r = L.move(s, 1, { fr: 1, fc: 1, tr: 0, tc: 1 });
-  assert.ok(r.ok); assert.equal(r.outcome, 'flag'); assert.ok(s.over); assert.equal(s.winner, 1); assert.equal(s.reason, '夺取军旗');
+  assert.ok(r.ok); assert.equal(r.outcome, 'flag'); assert.ok(s.over); assert.equal(s.winner, 1); assert.equal(s.reason, 'Flag captured');
   // 无子可动:对方只剩雷和旗
   const t = playing(); put(t, 6, 0, 'S', 1); put(t, 0, 1, 'F', 2, false); put(t, 1, 2, 'M', 2, false);
   const r2 = L.move(t, 1, { fr: 6, fc: 0, tr: 7, tc: 0 }); assert.ok(r2.ok); assert.ok(t.over && t.winner === 1);
@@ -368,9 +368,9 @@ test('xiangqi: 重复局面裁决——长将者负,双方长将和,三次重复
   const mk = seq => ({ hist: seq.map(([k, p, chk, chs]) => ({ k, p, chk: !!chk, chs: !!chs })) });
   // 红方连续将军,黑方应将: A B C D A B C D A
   let s = mk([['A', 0], ['B', 1, 1], ['C', 2], ['D', 1, 1], ['A', 2], ['B', 1, 1], ['C', 2], ['D', 1, 1], ['A', 2], ['B', 1, 1]]);
-  let r = X.judgeRepeat(s, 1); assert.ok(r && r.winner === 2 && /长将/.test(r.reason), '长将方(红)判负');
+  let r = X.judgeRepeat(s, 1); assert.ok(r && r.winner === 2 && /Perpetual check/.test(r.reason), '长将方(红)判负');
   s = mk([['A', 0], ['B', 1, 1], ['C', 2, 1], ['D', 1, 1], ['A', 2, 1], ['B', 1, 1], ['C', 2, 1], ['D', 1, 1], ['A', 2, 1], ['B', 1, 1]]); r = X.judgeRepeat(s, 1); assert.equal(r.winner, 3);
-  s = mk([['A', 0], ['B', 1], ['C', 2], ['D', 1], ['A', 2], ['B', 1], ['C', 2], ['D', 1], ['A', 2], ['B', 1]]); r = X.judgeRepeat(s, 1); assert.equal(r.winner, 3); assert.ok(/重复/.test(r.reason));
+  s = mk([['A', 0], ['B', 1], ['C', 2], ['D', 1], ['A', 2], ['B', 1], ['C', 2], ['D', 1], ['A', 2], ['B', 1]]); r = X.judgeRepeat(s, 1); assert.equal(r.winner, 3); assert.ok(/repeated/.test(r.reason));
   s = mk([['A', 0], ['B', 1], ['C', 2], ['A', 1], ['B', 2]]); assert.equal(X.judgeRepeat(s, 2), null, '未满三次不裁决');
 });
 test('AI 困难档: 五子棋一步杀/封堵,象棋一步杀,并遵守时限', () => {

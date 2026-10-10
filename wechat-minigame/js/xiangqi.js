@@ -141,21 +141,21 @@
     for (i = j + 1; i <= n; i++) { var e = h[i]; cnt[e.p]++; if (!e.chk) all[e.p].chk = false; if (!e.chk && !e.chs) all[e.p].chase = false; }
     var a = 3 - seat; // 对手
     var chkS = all[seat].chk && cnt[seat] > 0, chkO = all[a].chk && cnt[a] > 0;
-    if (chkS && !chkO) return { winner: a, reason: '长将判负(将军方负)' };
-    if (chkO && !chkS) return { winner: seat, reason: '长将判负(将军方负)' };
-    if (chkS && chkO) return { winner: 3, reason: '双方长将,和棋' };
+    if (chkS && !chkO) return { winner: a, reason: 'Perpetual check - the checking side loses' };
+    if (chkO && !chkS) return { winner: seat, reason: 'Perpetual check - the checking side loses' };
+    if (chkS && chkO) return { winner: 3, reason: 'Both sides perpetually checking - draw' };
     var chsS = all[seat].chase && cnt[seat] > 0, chsO = all[a].chase && cnt[a] > 0;
-    if (chsS && !chsO) return { winner: a, reason: '长捉判负(捉子方负)' };
-    if (chsO && !chsS) return { winner: seat, reason: '长捉判负(捉子方负)' };
-    return { winner: 3, reason: '同一局面重复三次,和棋' };
+    if (chsS && !chsO) return { winner: a, reason: 'Perpetual chase - the chasing side loses' };
+    if (chsO && !chsS) return { winner: seat, reason: 'Perpetual chase - the chasing side loses' };
+    return { winner: 3, reason: 'Position repeated three times - draw' };
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '游戏已结束' };
-    if (seat !== s.turn) return { ok: false, err: '还没轮到你' };
-    if (!mv || ['fr', 'fc', 'tr', 'tc'].some(function (k) { return !Number.isInteger(mv[k]); })) return { ok: false, err: '走法无效' };
+    if (s.over) return { ok: false, err: 'The game is over' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
+    if (!mv || ['fr', 'fc', 'tr', 'tc'].some(function (k) { return !Number.isInteger(mv[k]); })) return { ok: false, err: 'Invalid move' };
     var legal = legalMoves(s.board, seat), found = null;
     for (var i = 0; i < legal.length; i++) { var m = legal[i]; if (m.fr === mv.fr && m.fc === mv.fc && m.tr === mv.tr && m.tc === mv.tc) { found = m; break; } }
-    if (!found) return { ok: false, err: '不符合规则的走法' };
+    if (!found) return { ok: false, err: 'Illegal move' };
     var cap = s.board[mv.tr][mv.tc];
     s.board[mv.tr][mv.tc] = s.board[mv.fr][mv.fc]; s.board[mv.fr][mv.fc] = null;
     s.last = { fr: mv.fr, fc: mv.fc, tr: mv.tr, tc: mv.tc, p: seat };
@@ -169,19 +169,19 @@
     s.hist.push({ k: posKey(s.board, opp), p: seat, chk: s.check, chs: chased });
     var rep = oppMoves.length ? judgeRepeat(s, seat) : null;
     if (rep) { s.over = true; s.winner = rep.winner; s.reason = rep.reason; }
-    else if (oppMoves.length === 0) { s.over = true; s.winner = seat; s.reason = s.check ? '将死' : '困毙(无子可动)'; }
-    else if (s.noCap >= 120) { s.over = true; s.winner = 3; s.reason = '六十回合无吃子,和棋'; }
+    else if (oppMoves.length === 0) { s.over = true; s.winner = seat; s.reason = s.check ? 'Checkmate' : 'Stalemate (no legal move) - loss'; }
+    else if (s.noCap >= 120) { s.over = true; s.winner = 3; s.reason = 'Sixty moves without a capture - draw'; }
     else s.turn = opp;
     return { ok: true, capture: cap, check: s.check };
   }
-  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = '对方认输/离开'; }
+  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = 'Opponent resigned / left'; }
   function view(s) { var v = {}; for (var k in s) if (k !== 'hist') v[k] = s[k]; return v; }
   // 若 seat 走 mv 会被规则判负(长将/长捉),返回 true(用于 AI 避让)
   function wouldLoseByRule(s, seat, mv) {
     var c = { board: s.board.map(function (r) { return r.slice(); }), turn: s.turn, winner: 0, over: false, reason: '', check: false, noCap: s.noCap, count: s.count, last: s.last, moves: s.moves.slice(), hist: s.hist.slice() };
-    var r = move(c, seat, mv); return !!(r.ok && c.over && c.winner === 3 - seat && /长/.test(c.reason));
+    var r = move(c, seat, mv); return !!(r.ok && c.over && c.winner === 3 - seat && /Perpetual/.test(c.reason));
   }
-  var API = { id: 'xiangqi', wouldLoseByRule: wouldLoseByRule, judgeRepeat: judgeRepeat, name: '中国象棋', ROWS: ROWS, COLS: COLS, newGame: newGame, move: move, resign: resign, view: view,
+  var API = { id: 'xiangqi', wouldLoseByRule: wouldLoseByRule, judgeRepeat: judgeRepeat, name: 'Chinese Chess', ROWS: ROWS, COLS: COLS, newGame: newGame, move: move, resign: resign, view: view,
     pseudoMoves: pseudoMoves, legalMoves: legalMoves, legalMovesFrom: legalMovesFrom, inCheck: inCheck, findKing: findKing, sideOf: sideOf, initialBoard: initialBoard };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Xiangqi = API;
 })();

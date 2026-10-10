@@ -24,20 +24,20 @@
     return null;
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '游戏已结束' };
-    if (seat !== s.turn) return { ok: false, err: '还没轮到你' };
-    if (!mv || !Number.isInteger(mv.x) || !Number.isInteger(mv.y) || !inb(mv.x, mv.y)) return { ok: false, err: '落子位置无效' };
-    if (s.board[mv.y * N + mv.x] !== 0) return { ok: false, err: '这里已经有棋子' };
+    if (s.over) return { ok: false, err: 'The game is over' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
+    if (!mv || !Number.isInteger(mv.x) || !Number.isInteger(mv.y) || !inb(mv.x, mv.y)) return { ok: false, err: 'Invalid position' };
+    if (s.board[mv.y * N + mv.x] !== 0) return { ok: false, err: 'That point is already taken' };
     s.board[mv.y * N + mv.x] = seat;
     s.moves.push({ x: mv.x, y: mv.y, p: seat });
     var line = findLine(s.board, mv.x, mv.y, seat);
-    if (line) { s.over = true; s.winner = seat; s.winLine = line; s.reason = line.length > 5 ? '长连获胜' : '五连获胜'; }
-    else if (s.moves.length >= N * N) { s.over = true; s.winner = 3; s.reason = '棋盘已满,和棋'; }
+    if (line) { s.over = true; s.winner = seat; s.winLine = line; s.reason = line.length > 5 ? 'Wins with an overline' : 'Wins with five in a row'; }
+    else if (s.moves.length >= N * N) { s.over = true; s.winner = 3; s.reason = 'Board full - draw'; }
     else s.turn = 3 - seat;
     return { ok: true };
   }
-  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = '对方认输/离开'; }
+  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = 'Opponent resigned / left'; }
   function view(s) { return s; }
-  var API = { id: 'gomoku', name: '五子棋', N: N, newGame: newGame, move: move, resign: resign, view: view, findLine: findLine, inb: inb };
+  var API = { id: 'gomoku', name: 'Gomoku', N: N, newGame: newGame, move: move, resign: resign, view: view, findLine: findLine, inb: inb };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Gomoku = API;
 })();

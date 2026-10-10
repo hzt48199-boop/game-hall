@@ -3,7 +3,7 @@ const played = [];
 global.Audio = class { constructor(src) { this.src = src; } cloneNode() { const c = new global.Audio(this.src); return c; } play() { played.push(this.src.replace(/.*\//, '')); return Promise.resolve(); } pause() { } };
 const calls = { n: 0 };
 const ctx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : (...a) => { calls.n++; return { addColorStop() { } }; }), set: (t, k, v) => { t[k] = v; return true; } });
-const store = {}; const storage = { get: k => (k in store ? store[k] : null), set: (k, v) => { store[k] = v; } };
+const store = { gh_lang: 'zh' }; const storage = { get: k => (k in store ? store[k] : null), set: (k, v) => { store[k] = v; } };
 const { App } = require('../web/js/app.js');
 const E = require('../web/js/engines.js'); const B = require('../web/js/boards.js'); const Luz = E.luzhanqi;
 const app = new App({ aiTimeScale: 0.1, canvas: {}, ctx, getSize: () => ({ w: 390, h: 780 }), storage, raf: () => { }, serverUrl: () => 'ws://127.0.0.1:1' });
@@ -63,7 +63,7 @@ const ok = (c, m) => { if (!c) throw new Error('FAIL ' + m); console.log('  ✔'
     click('返回大厅'); }
   click('麻将'); click('人机对战'); click('困难'); click('开始对战'); ok(app.scene === 'game' && app.g.game === 'mahjong', '麻将对局开始');
   { let steps = 0, acts = 0;
-    for (; steps < 1500 && !(app.g.vs && app.g.vs.over); steps++) {
+    for (; steps < 4000 && !(app.g.vs && app.g.vs.over); steps++) {
       await sleep(25); frame(); const v = app.g.vs; if (!v || v.over || v.turn !== app.g.seat) continue;
       const o = E.mahjong.options(v, app.g.seat); if (!o) continue;
       if (v.phase === 'claim') { click(o.hu ? '胡' : '过'); acts++; }
@@ -76,12 +76,12 @@ const ok = (c, m) => { if (!c) throw new Error('FAIL ' + m); console.log('  ✔'
   { const texts = []; ctx.fillText = (s) => { texts.push(String(s)); };
     const clickP = pre => { frame(); const h = app.hits.filter(x => String(x.label).startsWith(pre))[0]; if (!h) throw new Error('找不到按钮前缀: ' + pre + ' 有=' + app.hits.map(x => x.label).join('|')); app.tap(h.x + h.w / 2, h.y + h.h / 2); frame(); return h.label; };
     const has = pre => { frame(); return app.hits.some(x => String(x.label).startsWith(pre)); };
-    frame(); ok(texts.some(s => s.includes('仅供娱乐,虚拟积分,不可兑换')), '大厅显示虚拟积分声明');
-    click('炸金花'); click('人机对战'); click('困难'); click('4 人'); ok(texts.some(s => s.includes('仅供娱乐,虚拟积分,不可兑换')), '人机设置页显示声明'); click('开始对战');
+    frame(); ok(texts.some(s => s.includes('虚拟筹码,无现金价值,不可兑换')), '大厅显示虚拟积分声明');
+    click('炸金花'); click('人机对战'); click('困难'); click('4 人'); ok(texts.some(s => s.includes('虚拟筹码,无现金价值,不可兑换')), '人机设置页显示声明'); click('开始对战');
     ok(app.scene === 'game' && app.g.game === 'zhajinhua' && app.g.vs.n === 4, '炸金花对局开始(4 人)');
     ok(app.hits.some(h => h.label === '音效:开') && app.hits.some(h => h.label === '背景音乐:开'), '炸金花界面有音效 / 音乐开关');
-    texts.length = 0; frame(); ok(texts.some(s => s.includes('仅供娱乐,虚拟积分,不可兑换')), '牌桌上显示"仅供娱乐,虚拟积分,不可兑换"');
-    ok(!texts.some(s => /真钱|现金|充值|提现|购买/.test(s)), '牌桌界面无真钱 / 充值字样');
+    texts.length = 0; frame(); ok(texts.some(s => s.includes('虚拟筹码,无现金价值,不可兑换')), '牌桌上显示"虚拟筹码,无现金价值,不可兑换"');
+    ok(!texts.filter(s => !s.includes('无现金价值')).some(s => /真钱|现金|充值|提现|购买/.test(s)), '牌桌界面无真钱 / 充值字样');
     ok(app.g.vs.hands[1] === null || app.g.vs.hands.every((h, i) => i === 0 || i === 1 || h === null), '未看牌时看不到任何人的牌(含对手)');
     let steps = 0, mine = 0, acts = { look: 0, call: 0, raise: 0, compare: 0, fold: 0 };
     for (; steps < 800 && !app.g.vs.over; steps++) {
@@ -89,7 +89,7 @@ const ok = (c, m) => { if (!c) throw new Error('FAIL ' + m); console.log('  ✔'
       if (!v.seen[1] && has('看牌')) { clickP('看牌'); acts.look++; }
       const turn = mine++;
       if (turn === 0 && has('加注到')) { clickP('加注到'); acts.raise++; ok(app.g.vs.unit > 10, '加注后单注提高到 ' + app.g.vs.unit); continue; }
-      if (turn >= 2 && has('比牌')) { clickP('比牌'); if (app.g.pick) { ok(app.hits.some(h => String(h.label).startsWith('比牌对象')), '多个对手时进入选择比牌对象'); clickP('比牌对象'); } acts.compare++; continue; }
+      if (turn >= 2 && has('比牌')) { clickP('比牌'); if (app.g.pick) { ok(app.hits.some(h => String(h.label).startsWith('target')), '多个对手时进入选择target'); clickP('target'); } acts.compare++; continue; }
       if (turn >= 4) { clickP('弃牌'); acts.fold++; continue; }
       clickP('跟注'); acts.call++;
     }

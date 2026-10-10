@@ -13,16 +13,17 @@ const ROOM_TTL_MS = 10 * 60 * 1000;
 const sessions = new Map(); // token -> session
 const rooms = new Map();    // code -> room
 const queues = { gomoku: [], xiangqi: [], luzhanqi: [] };
-const BOT_NAMES = ['电脑·阿福', '电脑·小宝', '电脑·老王', '电脑·大壮', '电脑·小花', '电脑·阿呆'];
+const BOT_NAMES = ['Bot Ace', 'Bot Bao', 'Bot Max', 'Bot Rex', 'Bot Lily', 'Bot Sam'];
 const isMulti = g => (E.SEATS[g] || 2) > 2;
-const nSeats = room => room.game === 'zhajinhua' ? (room.cap || 4) : (E.SEATS[room.game] || 2); // 炸金花: 桌位数由房主设定(2~6)
+const CAP_GAMES = ['zhajinhua', 'holdem'];
+const nSeats = room => CAP_GAMES.includes(room.game) ? (room.cap || 4) : (E.SEATS[room.game] || 2); // table size set by the host (2-6)
 const TURN_MS = +process.env.TURN_MS || 45000;      // 真人超时由电脑代打(托管)
 const BOT_DELAY = +process.env.BOT_DELAY || 700;     // 电脑出手前的停顿(毫秒)
 
 function send(ws, obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
 function err(sess, msg, code) { send(sess.ws, { t: 'err', code: code || 'bad', msg }); }
 function newCode() { let c; do { c = String(crypto.randomInt(100000, 1000000)); } while (rooms.has(c)); return c; }
-function cleanName(n) { return String(n || '').replace(/[\u0000-\u001f<>]/g, '').slice(0, 12) || '玩家' + crypto.randomInt(1000, 9999); }
+function cleanName(n) { return String(n || '').replace(/[\u0000-\u001f<>]/g, '').slice(0, 12) || 'Player' + crypto.randomInt(1000, 9999); }
 
 function snapshot(room, seat) {
   const eng = E[room.game];
@@ -64,6 +65,7 @@ function fallbackMove(room, seat) {
   const st = room.state;
   if (room.game === 'doudizhu') { if (st.phase === 'bid') return { bid: 0 }; if (st.last) return { pass: true }; return { cards: [st.hands[seat][st.hands[seat].length - 1]] }; }
   if (room.game === 'zhajinhua') { const o = E.zhajinhua.options(st, seat); return o.call ? { a: 'call' } : { a: 'fold' }; }
+  if (room.game === 'holdem') { const o = E.holdem.options(st, seat); return o.check ? { a: 'check' } : { a: 'fold' }; }
   if (room.game === 'mahjong') { const o = E.mahjong.options(st, seat); if (!o) return null; if (st.phase === 'claim') return { a: 'pass' }; return { a: 'discard', tile: st.hands[seat][st.hands[seat].length - 1] }; }
   return null;
 }
@@ -72,7 +74,7 @@ function startRoom(room) {
   if (isMulti(room.game)) { // 空位由电脑补上
     for (let i = 1; i <= nSeats(room); i++) if (!room.seats[i]) room.seats[i] = { bot: true, name: BOT_NAMES[i - 1], level: 3, room: room.code, seat: i };
     const nn = nSeats(room);
-    room.state = E[room.game].newGame(room.game === 'zhajinhua' ? { n: nn, dealer: ((room.round || 0) % nn) + 1 } : { dealer: room.round ? ((room.round) % 4) + 1 : 1 }); room.round = (room.round || 0) + 1; return;
+    room.state = E[room.game].newGame(room.game === 'zhajinhua' ? { n: nn, dealer: ((room.round || 0) % nn) + 1 } : room.game === 'holdem' ? { n: nn, dealer: ((room.round || 0) % nn) + 1, handNo: (room.round || 0) + 1, stacks: room.state && room.state.game === 'holdem' && room.state.over && room.state.n === nn ? E.holdem.nextStacks(room.state) : undefined } : { dealer: room.round ? ((room.round) % 4) + 1 : 1 }); room.round = (room.round || 0) + 1; return;
   }
   room.state = E[room.game].newGame();
   if (room.game === 'luzhanqi') room.state.phase = 'setup';
@@ -108,7 +110,7 @@ function leaveRoom(sess, reason) {
   }
   if (room.status === 'playing' || room.status === 'setup') {
     E[room.game].resign(room.state, seat);
-    room.state.reason = reason || '对方认输/离开';
+    room.state.reason = reason || 'Opponent resigned / left';
     room.status = 'over';
   } else if (room.status === 'waiting') { room.status = 'over'; }
   sess.room = null; sess.seat = 0;
@@ -118,32 +120,32 @@ function leaveRoom(sess, reason) {
 
 const handlers = {
   create(sess, m) {
-    if (!E[m.game]) return err(sess, '未知游戏');
-    if (sess.room) leaveRoom(sess, '对方离开');
+    if (!E[m.game]) return err(sess, 'Unknown game');
+    if (sess.room) leaveRoom(sess, 'Opponent left');
     const room = createRoom(m.game, sess);
     send(sess.ws, snapshot(room, 1));
   },
   join(sess, m) {
     const code = String(m.code || '');
     const room = rooms.get(code);
-    if (!room) return err(sess, '房间不存在', 'no_room');
+    if (!room) return err(sess, 'Room not found', 'no_room');
     if (seatList(room).some(i => room.seats[i] === sess)) return send(sess.ws, snapshot(room, sess.seat));
     if (isMulti(room.game)) {
-      if (room.status !== 'waiting') return err(sess, '房间已开始', 'full');
-      const free = seatList(room).filter(i => !room.seats[i]); if (!free.length) return err(sess, '房间已满', 'full');
-      if (sess.room) leaveRoom(sess, '对方离开');
+      if (room.status !== 'waiting') return err(sess, 'The room has already started', 'full');
+      const free = seatList(room).filter(i => !room.seats[i]); if (!free.length) return err(sess, 'The room is full', 'full');
+      if (sess.room) leaveRoom(sess, 'Opponent left');
       room.seats[free[0]] = sess; sess.room = code; sess.seat = free[0];
       if (seatList(room).every(i => room.seats[i])) startRoom(room);   // 坐满自动开局
       return broadcast(room);
     }
-    if (room.status !== 'waiting' || room.seats[2]) return err(sess, '房间已满或已开始', 'full');
-    if (sess.room) leaveRoom(sess, '对方离开');
+    if (room.status !== 'waiting' || room.seats[2]) return err(sess, 'The room is full or already started', 'full');
+    if (sess.room) leaveRoom(sess, 'Opponent left');
     room.seats[2] = sess; sess.room = code; sess.seat = 2;
     startRoom(room); broadcast(room);
   },
   match(sess, m) {
-    if (!E[m.game]) return err(sess, '未知游戏');
-    if (sess.room) leaveRoom(sess, '对方离开');
+    if (!E[m.game]) return err(sess, 'Unknown game');
+    if (sess.room) leaveRoom(sess, 'Opponent left');
     dropFromQueues(sess);
     if (isMulti(m.game)) { // 多人游戏: 加入同游戏的公开等待房,否则新建一间(客户端 8 秒无人则自行转人机)
       let room = null; rooms.forEach(r => { if (!room && r.game === m.game && r.status === 'waiting' && r.pub && seatList(r).some(i => !r.seats[i])) room = r; });
@@ -166,30 +168,30 @@ const handlers = {
   cancelMatch(sess) { dropFromQueues(sess); if (sess.room) { const r = rooms.get(sess.room); if (r && isMulti(r.game) && r.status === 'waiting') leaveRoom(sess); } send(sess.ws, { t: 'matchCancelled' }); },
   start(sess) { // 房主在好友房里提前开局,空位由电脑补上(仅 3、4 人游戏)
     const room = rooms.get(sess.room);
-    if (!room || !isMulti(room.game) || room.status !== 'waiting') return err(sess, '现在不能开局');
-    if (room.host !== sess.seat) return err(sess, '只有房主可以开局');
+    if (!room || !isMulti(room.game) || room.status !== 'waiting') return err(sess, 'Cannot start right now');
+    if (room.host !== sess.seat) return err(sess, 'Only the host can start the game');
     startRoom(room); broadcast(room);
   },
   setcap(sess, m) { // 炸金花: 房主设置桌位数(2~6),不能小于已坐下的最大座位号
     const room = rooms.get(sess.room);
-    if (!room || room.game !== 'zhajinhua' || room.status !== 'waiting') return err(sess, '现在不能设置人数');
-    if (room.host !== sess.seat) return err(sess, '只有房主可以设置');
-    const n = Math.floor(+m.n); if (!(n >= 2 && n <= 6)) return err(sess, '人数需为 2~6');
-    for (let i = n + 1; i <= 6; i++) if (room.seats[i]) return err(sess, '已有玩家坐在 ' + i + ' 号位,无法缩小');
-    room.cap = n; room.state = E.zhajinhua.newGame({ n }); broadcast(room);
+    if (!room || !CAP_GAMES.includes(room.game) || room.status !== 'waiting') return err(sess, 'Cannot change the seats right now');
+    if (room.host !== sess.seat) return err(sess, 'Only the host can change this');
+    const n = Math.floor(+m.n); if (!(n >= 2 && n <= 6)) return err(sess, 'Seats must be 2-6');
+    for (let i = n + 1; i <= 6; i++) if (room.seats[i]) return err(sess, 'Seat ' + i + ' is occupied, cannot shrink the table');
+    room.cap = n; room.state = E[room.game].newGame({ n }); broadcast(room);
   },
   back(sess) { // 取消托管
     const room = rooms.get(sess.room); if (!room) return; const s = room.seats[sess.seat]; if (s === sess) { sess.auto = false; broadcast(room); }
   },
   again(sess) { // 一局结束后,房主再开一局(同一批人,电脑补位)
     const room = rooms.get(sess.room);
-    if (!room || !isMulti(room.game) || room.status !== 'over') return err(sess, '现在不能再来一局');
-    if (room.host !== sess.seat) return err(sess, '请房主开始下一局');
+    if (!room || !isMulti(room.game) || room.status !== 'over') return err(sess, 'Cannot start another game right now');
+    if (room.host !== sess.seat) return err(sess, 'Please ask the host to start the next game');
     startRoom(room); broadcast(room);
   },
   move(sess, m) {
     const room = rooms.get(sess.room);
-    if (!room || room.status !== 'playing') return err(sess, '当前不能走棋');
+    if (!room || room.status !== 'playing') return err(sess, 'You cannot move right now');
     if (sess.auto) { sess.auto = false; }
     const r = E[room.game].move(room.state, sess.seat, m.move);
     if (!r.ok) { err(sess, r.err, 'illegal'); return send(sess.ws, snapshot(room, sess.seat)); }
@@ -197,7 +199,7 @@ const handlers = {
   },
   setup(sess, m) {
     const room = rooms.get(sess.room);
-    if (!room || room.game !== 'luzhanqi' || room.status !== 'setup') return err(sess, '现在不能布阵');
+    if (!room || room.game !== 'luzhanqi' || room.status !== 'setup') return err(sess, 'Not in the setup phase');
     const r = E.luzhanqi.setup(room.state, sess.seat, m.layout);
     if (!r.ok) return err(sess, r.err, 'illegal');
     updateStatus(room); broadcast(room);
@@ -237,7 +239,7 @@ function onClose(ws) {
   clearTimeout(sess.timer);
   sess.timer = setTimeout(() => {
     if (sess.ws) return;
-    if (sess.room) leaveRoom(sess, '对方断线超时');
+    if (sess.room) leaveRoom(sess, 'Opponent disconnected (timeout)');
     sessions.delete(sess.token);
   }, GRACE_MS);
 }
@@ -270,7 +272,7 @@ function start(port) {
       let m; try { m = JSON.parse(data.toString()); } catch (e) { return; }
       if (!m || typeof m.t !== 'string') return;
       if (m.t === 'hello') return onHello(ws, m);
-      const sess = ws.sess; if (!sess) return send(ws, { t: 'err', code: 'nohello', msg: '请先 hello' });
+      const sess = ws.sess; if (!sess) return send(ws, { t: 'err', code: 'nohello', msg: 'Please say hello first' });
       const h = handlers[m.t]; if (h && Object.prototype.hasOwnProperty.call(handlers, m.t)) h(sess, m);
     });
     ws.on('close', () => onClose(ws));

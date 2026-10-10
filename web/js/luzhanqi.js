@@ -4,10 +4,10 @@
 (function () {
   var ROWS = 12, COLS = 5;
   var TYPES = {
-    S: { n: '司令', r: 9, c: 1, v: 100 }, J: { n: '军长', r: 8, c: 1, v: 80 }, D: { n: '师长', r: 7, c: 2, v: 70 },
-    R: { n: '旅长', r: 6, c: 2, v: 60 }, T: { n: '团长', r: 5, c: 2, v: 50 }, B: { n: '营长', r: 4, c: 2, v: 40 },
-    C: { n: '连长', r: 3, c: 3, v: 30 }, L: { n: '排长', r: 2, c: 3, v: 20 }, E: { n: '工兵', r: 1, c: 3, v: 25 },
-    X: { n: '炸弹', r: 0, c: 2, v: 45 }, M: { n: '地雷', r: 0, c: 3, v: 30 }, F: { n: '军旗', r: 0, c: 1, v: 1000 }
+    S: { n: 'Marshal', r: 9, c: 1, v: 100 }, J: { n: 'General', r: 8, c: 1, v: 80 }, D: { n: 'Maj. General', r: 7, c: 2, v: 70 },
+    R: { n: 'Brigadier', r: 6, c: 2, v: 60 }, T: { n: 'Colonel', r: 5, c: 2, v: 50 }, B: { n: 'Major', r: 4, c: 2, v: 40 },
+    C: { n: 'Captain', r: 3, c: 3, v: 30 }, L: { n: 'Lieutenant', r: 2, c: 3, v: 20 }, E: { n: 'Engineer', r: 1, c: 3, v: 25 },
+    X: { n: 'Bomb', r: 0, c: 2, v: 45 }, M: { n: 'Mine', r: 0, c: 3, v: 30 }, F: { n: 'Flag', r: 0, c: 1, v: 1000 }
   };
   var CAMPS = {}; [[2, 1], [2, 3], [3, 2], [4, 1], [4, 3], [9, 1], [9, 3], [8, 2], [7, 1], [7, 3]].forEach(function (p) { CAMPS[p[0] * 5 + p[1]] = 1; });
   var HQS = {}; [[0, 1], [0, 3], [11, 1], [11, 3]].forEach(function (p) { HQS[p[0] * 5 + p[1]] = 1; });
@@ -69,8 +69,8 @@
     return { game: 'luzhanqi', phase: 'setup', board: b, layouts: [null, null, null], ready: [false, false], turn: 1, winner: 0, over: false, reason: '', dead: [], last: null, count: 0, info: null, log: [] };
   }
   function setup(s, seat, layout) {
-    if (s.phase !== 'setup') return { ok: false, err: '现在不是布阵阶段' };
-    if (!validLayout(layout)) return { ok: false, err: '布阵不合法(军旗须在大本营、地雷在后两排、炸弹不在第一排)' };
+    if (s.phase !== 'setup') return { ok: false, err: 'Not in the setup phase' };
+    if (!validLayout(layout)) return { ok: false, err: 'Invalid setup (flag in a headquarters, mines in the back two rows, bombs not in the front row)' };
     s.layouts[seat] = layout.slice(); s.ready[seat - 1] = true;
     if (s.layouts[1] && s.layouts[2]) {
       [1, 2].forEach(function (p) {
@@ -149,14 +149,14 @@
     return ra > rd ? 'win' : ra === rd ? 'both' : 'lose';
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '游戏已结束' };
-    if (s.phase !== 'playing') return { ok: false, err: '还在布阵阶段' };
-    if (seat !== s.turn) return { ok: false, err: '还没轮到你' };
-    if (!mv || ['fr', 'fc', 'tr', 'tc'].some(function (k) { return !Number.isInteger(mv[k]); }) || !inb(mv.fr, mv.fc) || !inb(mv.tr, mv.tc)) return { ok: false, err: '走法无效' };
+    if (s.over) return { ok: false, err: 'The game is over' };
+    if (s.phase !== 'playing') return { ok: false, err: 'Still in the setup phase' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
+    if (!mv || ['fr', 'fc', 'tr', 'tc'].some(function (k) { return !Number.isInteger(mv[k]); }) || !inb(mv.fr, mv.fc) || !inb(mv.tr, mv.tc)) return { ok: false, err: 'Invalid move' };
     var att = s.board[mv.fr][mv.fc];
-    if (!att || att.p !== seat) return { ok: false, err: '这不是你的棋子' };
+    if (!att || att.p !== seat) return { ok: false, err: 'That is not your piece' };
     var ok = movesFrom(s.board, mv.fr, mv.fc).some(function (m) { return m.tr === mv.tr && m.tc === mv.tc; });
-    if (!ok) return { ok: false, err: '不符合规则的走法' };
+    if (!ok) return { ok: false, err: 'Illegal move' };
     var def = s.board[mv.tr][mv.tc], outcome = 'move';
     s.board[mv.fr][mv.fc] = null;
     if (!def) { s.board[mv.tr][mv.tc] = att; att.mv = true; }
@@ -173,14 +173,14 @@
     s.log.push({ p: seat, fr: mv.fr, fc: mv.fc, tr: mv.tr, tc: mv.tc, out: def ? outcome : 'move',
       da: def && (outcome === 'lose' || outcome === 'both') ? att.t : null, dd: def && (outcome === 'win' || outcome === 'flag' || outcome === 'both') ? def.t : null });
     var opp = 3 - seat;
-    if (outcome === 'flag') { s.over = true; s.winner = seat; s.reason = '夺取军旗'; }
-    else if (legalMoves(s, opp).length === 0) { s.over = true; s.winner = seat; s.reason = '对方无子可动'; }
-    else if (legalMoves(s, seat).length === 0) { s.over = true; s.winner = opp; s.reason = '己方无子可动'; }
-    else if (s.count >= 600) { s.over = true; s.winner = 3; s.reason = '步数过多,和棋'; }
+    if (outcome === 'flag') { s.over = true; s.winner = seat; s.reason = 'Flag captured'; }
+    else if (legalMoves(s, opp).length === 0) { s.over = true; s.winner = seat; s.reason = 'The opponent has no movable piece'; }
+    else if (legalMoves(s, seat).length === 0) { s.over = true; s.winner = opp; s.reason = 'You have no movable piece'; }
+    else if (s.count >= 600) { s.over = true; s.winner = 3; s.reason = 'Too many moves - draw'; }
     else s.turn = opp;
     return { ok: true, outcome: outcome, info: s.info };
   }
-  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = '对方认输/离开'; }
+  function resign(s, seat) { if (s.over) return; s.over = true; s.winner = 3 - seat; s.reason = 'Opponent resigned / left'; }
   // 对座位 seat 隐藏对方棋子身份(结束后全部公开)
   function view(s, seat) {
     var v = JSON.parse(JSON.stringify(s));
@@ -193,7 +193,7 @@
     if (!s.over) for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var p = v.board[r][c]; if (p && p.p !== seat) p.t = '?'; }
     return v;
   }
-  var API = { id: 'luzhanqi', name: '军棋', ROWS: ROWS, COLS: COLS, TYPES: TYPES, COUNTS: COUNTS, STATIONS: STATIONS, newGame: newGame, setup: setup, move: move, resign: resign, view: view,
+  var API = { id: 'luzhanqi', name: 'Luzhanqi', ROWS: ROWS, COLS: COLS, TYPES: TYPES, COUNTS: COUNTS, STATIONS: STATIONS, newGame: newGame, setup: setup, move: move, resign: resign, view: view,
     legalMoves: legalMoves, legalMovesFrom: legalMovesFrom, movesFrom: movesFrom, battle: battle, validLayout: validLayout, randomLayout: randomLayout, absPos: absPos,
     isCamp: isCamp, isHQ: isHQ, railNode: railNode, railEdge: railEdge };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Luzhanqi = API;

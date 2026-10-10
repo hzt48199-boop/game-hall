@@ -9,7 +9,7 @@
    一轮 = 所有未出局玩家各行动一次,超过 maxRounds 轮自动封顶开牌;轮到的人豆不够跟注时也直接开牌。
    每局每人带入 stack(默认 1000)虚拟欢乐豆,结算 = 期末 − 期初,零和。 */
 (function () {
-  var CATS = ['', '单张', '对子', '顺子', '金花', '同花顺', '豹子'];
+  var CATS = ['', 'High card', 'Pair', 'Straight', 'Flush', 'Straight flush', 'Three of a kind'];
   var RANKN = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' };
   var SUITC = ['♠', '♥', '♣', '♦'];
   function rankOf(id) { return 2 + (id >> 2); }
@@ -36,7 +36,7 @@
     var score = cat * 1000000 + (key[0] || 0) * 10000 + (key[1] || 0) * 100 + (key[2] || 0);
     var is235 = !flush && rs[0] === 5 && rs[1] === 3 && rs[2] === 2;
     var name = CATS[cat];
-    if (cat === 6) name = '豹子 ' + rankName(rs[0]) + rankName(rs[0]) + rankName(rs[0]);
+    if (cat === 6) name = 'Three of a kind ' + rankName(rs[0]) + rankName(rs[0]) + rankName(rs[0]);
     return { cat: cat, key: key, score: score, name: name, is235: is235 };
   }
   /* >0: a 大;<0: b 大;0: 完全相同(花色不分大小) */
@@ -86,20 +86,20 @@
     var act = activeList(s), best = [act[0]];
     for (var i = 1; i < act.length; i++) { var c = compareHands(s.cards[act[i]], s.cards[best[0]], s.opts); if (c > 0) best = [act[i]]; else if (c === 0) best.push(act[i]); }
     var e = evalHand(s.cards[best[0]], s.opts);
-    finish(s, best, why + ',' + (best.length > 1 ? best.length + ' 人牌型相同平分' : '座位 ' + best[0] + ' 以「' + e.name + '」获胜'), true);
+    finish(s, best, why + ', ' + (best.length > 1 ? best.length + ' players tie and split the pot' : 'seat ' + best[0] + ' wins with ' + e.name), true);
   }
   /* 一个行动结束后推进: 只剩一人 → 结束;队列空 → 新一轮(超过封顶则开牌);豆不够跟注 → 开牌 */
   function checkTurn(s) {
     if (s.over) return;
     var act = activeList(s);
-    if (act.length === 1) return finish(s, [act[0]], '其他玩家都已弃牌 / 比牌落败,座位 ' + act[0] + ' 获胜', false);
+    if (act.length === 1) return finish(s, [act[0]], 'All other players folded or lost a comparison - seat ' + act[0] + ' wins', false);
     if (!s.queue.length) {
       s.round++;
-      if (s.round > s.maxRounds) return doShowdown(s, '达到 ' + s.maxRounds + ' 轮封顶,开牌');
+      if (s.round > s.maxRounds) return doShowdown(s, 'Round limit (' + s.maxRounds + ') reached - showdown');
       s.queue = cyc(s, s.dealer);
     }
     s.turn = s.queue[0];
-    if (s.stacks[s.turn] < callCost(s, s.turn)) return doShowdown(s, '座位 ' + s.turn + ' 的欢乐豆不足以跟注,开牌');
+    if (s.stacks[s.turn] < callCost(s, s.turn)) return doShowdown(s, 'Seat ' + s.turn + ' cannot afford to call - showdown');
   }
   function dropFromQueue(s, p) { var i = s.queue.indexOf(p); if (i >= 0) s.queue.splice(i, 1); }
 
@@ -122,33 +122,33 @@
     pushLog(s, { seat: seat, a: 'fold' }); s.event = { t: 'fold', seat: seat }; s.seq++; checkTurn(s);
   }
   function move(s, seat, mv) {
-    if (s.over) return { ok: false, err: '本局已结束' };
-    if (!Number.isInteger(seat) || seat < 1 || seat > s.n || s.status[seat] !== 'active') return { ok: false, err: '你已不在本局中' };
-    if (!mv || typeof mv !== 'object' || typeof mv.a !== 'string') return { ok: false, err: '操作无效' };
+    if (s.over) return { ok: false, err: 'The hand is over' };
+    if (!Number.isInteger(seat) || seat < 1 || seat > s.n || s.status[seat] !== 'active') return { ok: false, err: 'You are not in this hand' };
+    if (!mv || typeof mv !== 'object' || typeof mv.a !== 'string') return { ok: false, err: 'Invalid action' };
     if (mv.a === 'look') {
-      if (s.seen[seat]) return { ok: false, err: '你已经看过牌了' };
+      if (s.seen[seat]) return { ok: false, err: 'You have already looked' };
       s.seen[seat] = true; pushLog(s, { seat: seat, a: 'look' }); s.event = { t: 'look', seat: seat }; s.seq++;
       if (s.turn && s.stacks[s.turn] < callCost(s, s.turn)) checkTurn(s); // 看牌会让明注变贵: 重新检查是否开牌
       return { ok: true, kind: 'look' };
     }
-    if (seat !== s.turn) return { ok: false, err: '还没轮到你' };
+    if (seat !== s.turn) return { ok: false, err: 'Not your turn' };
     var o = options(s, seat);
     if (mv.a === 'fold') { foldSeat(s, seat); return { ok: true, kind: 'fold' }; }
     if (mv.a === 'call') {
-      if (!o.call) return { ok: false, err: '欢乐豆不足' };
+      if (!o.call) return { ok: false, err: 'Not enough beans' };
       pay(s, seat, o.call); s.calls[seat]++; dropFromQueue(s, seat);
       pushLog(s, { seat: seat, a: 'call', amt: o.call }); s.event = { t: 'call', seat: seat, amt: o.call }; s.seq++; checkTurn(s); return { ok: true, kind: 'call' };
     }
     if (mv.a === 'raise') {
       var r = o.raise.filter(function (x) { return x.unit === mv.unit; })[0];
-      if (!r) return { ok: false, err: '加注档位无效或豆不足' };
+      if (!r) return { ok: false, err: 'Invalid raise level or not enough beans' };
       pay(s, seat, r.cost); s.unit = r.unit; s.raises[seat]++; dropFromQueue(s, seat);
       pushLog(s, { seat: seat, a: 'raise', amt: r.cost, unit: r.unit }); s.event = { t: 'raise', seat: seat, amt: r.cost, unit: r.unit }; s.seq++; checkTurn(s); return { ok: true, kind: 'raise' };
     }
     if (mv.a === 'compare') {
-      if (!s.seen[seat]) return { ok: false, err: '先看牌才能比牌' };
+      if (!s.seen[seat]) return { ok: false, err: 'Look at your cards before comparing' };
       var t = o.compare.filter(function (x) { return x.target === mv.target; })[0];
-      if (!t) return { ok: false, err: s.round < 2 && activeList(s).length > 2 ? '第 2 轮起才能比牌' : '不能与该玩家比牌或豆不足' };
+      if (!t) return { ok: false, err: s.round < 2 && activeList(s).length > 2 ? 'Comparing is allowed from round 2' : 'Cannot compare with that player (or not enough beans)' };
       pay(s, seat, t.cost);
       var c = compareHands(s.cards[seat], s.cards[t.target], s.opts), loser = c > 0 ? t.target : seat; // 平局发起者输
       s.status[loser] = 'lost'; dropFromQueue(s, loser); dropFromQueue(s, seat);
@@ -156,7 +156,7 @@
       pushLog(s, { seat: seat, a: 'compare', target: t.target, loser: loser, amt: t.cost }); s.event = { t: 'compare', seat: seat, target: t.target, loser: loser, amt: t.cost }; s.seq++;
       checkTurn(s); return { ok: true, kind: 'compare', loser: loser };
     }
-    return { ok: false, err: '未知操作' };
+    return { ok: false, err: 'Unknown action' };
   }
   function resign(s, seat) { // 离开 / 认输 = 弃牌
     if (s.over || seat < 1 || seat > s.n || s.status[seat] !== 'active') return;
@@ -174,7 +174,7 @@
     v.seat = seat; v.levels = s.levels.slice(); v.queue = s.queue.slice();
     return v;
   }
-  var API = { id: 'zhajinhua', name: '炸金花', nSeats: 6, CATS: CATS, rankOf: rankOf, suitOf: suitOf, cardName: cardName, rankName: rankName, evalHand: evalHand, compareHands: compareHands,
+  var API = { id: 'zhajinhua', name: 'Zha Jin Hua', nSeats: 6, CATS: CATS, rankOf: rankOf, suitOf: suitOf, cardName: cardName, rankName: rankName, evalHand: evalHand, compareHands: compareHands,
     newGame: newGame, move: move, resign: resign, view: view, options: options, callCost: callCost, activeList: activeList, shuffleDeck: shuffleDeck };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else (self.GH = self.GH || {}).Zhajinhua = API;
 })();

@@ -39,7 +39,8 @@
     this.beans = parseInt(pf.storage.get('gh_beans'), 10); if (!(this.beans >= 0)) this.beans = 2000;
     this.net = Net.create({ url: pf.serverUrl, storage: pf.storage });
     this.net.onMessage = function (m) { self.onNet(m); };
-    this.net.onStatus = function (s) { self.netState = s; self.dirty = true; };
+    this.net.onStatus = function (s) { self.netState = s; self.dirty = true; if (s === 'failed') self.onNetFailed(); self.updateOverlay(); };
+    this.warming = false; this.wasReady = false; this.initOverlay();
     I18n.init(pf.storage); this.applyLang();
     this.setScene('lobby');
     var loop = function () { self.frame(); pf.raf(loop); };
@@ -54,6 +55,40 @@
     var track = (this.g && scene === 'game') ? ({ gomoku: 'calm', chess: 'calm', holdem: 'lively', doudizhu: 'lively', zhajinhua: 'lively', mahjong: 'lively' }[this.g.game] || 'chinese') : 'calm';
     Sound.setMusic(track);
     if (scene === 'matching' || scene === 'waiting' || (scene === 'join')) this.net.start();
+  };
+  /* ---- cold-start overlay + reconnect banner (DOM, web only) ---- */
+  P.initOverlay = function () {
+    if (typeof document === 'undefined' || !document.body) return;
+    var self = this, d = document.createElement('div');
+    d.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:99;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(15,40,30,.88);color:#fff;font:600 18px sans-serif;text-align:center;padding:20px';
+    d.innerHTML = '<div id="gh-ov-t"></div><div id="gh-ov-s" style="font-weight:400;font-size:13px;opacity:.8;margin-top:8px"></div>';
+    var b = document.createElement('div');
+    b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:98;display:none;background:#ef6c00;color:#fff;font:600 14px sans-serif;text-align:center;padding:6px';
+    document.body.appendChild(d); document.body.appendChild(b); this.ovEl = d; this.bnEl = b;
+    setInterval(function () { self.updateOverlay(); }, 500);
+    var url = this.pf.serverUrl && this.pf.serverUrl(); if (typeof fetch !== 'function' || !url) return;
+    var http = url.replace(/^ws/, 'http').replace(/(\/ws)?\/?$/, '') + '/healthz', done = false;
+    this.warming = false; var tm = setTimeout(function () { if (!done) { self.warming = true; self.updateOverlay(); } }, 1500);
+    var fin = function () { done = true; clearTimeout(tm); self.warming = false; self.updateOverlay(); };
+    var tries = 0; (function go() { fetch(http, { cache: 'no-store' }).then(function (r) { if (r.ok) fin(); else retry(); }, retry); function retry() { if (++tries > 20) return fin(); setTimeout(go, 2000); } })();
+  };
+  P.updateOverlay = function () {
+    if (!this.ovEl) return;
+    var n = this.net, scene = this.scene;
+    if (n.ready) this.wasReady = true; if (!n.wanted) this.wasReady = false;
+    var connecting = n.wanted && !n.ready && !this.wasReady && (scene === 'matching' || scene === 'waiting' || scene === 'join');
+    var show = this.warming || connecting;
+    this.ovEl.style.display = show ? 'flex' : 'none';
+    if (show) { this.ovEl.firstChild.textContent = T('Server waking up, please wait...'); this.ovEl.lastChild.textContent = T('The free server sleeps when idle; this can take up to a minute.'); }
+    var re = n.wanted && !n.ready && this.wasReady && !show;
+    this.bnEl.style.display = re ? 'block' : 'none';
+    if (re) this.bnEl.textContent = T('Reconnecting...') + (n.attempt > 1 ? ' (' + n.attempt + ')' : '');
+  };
+  P.inGameOnline = function () { return !!(this.g && this.g.mode === 'online'); };
+  P.onNetFailed = function () {
+    var wasGame = this.inGameOnline(); this.wasReady = false;
+    if (wasGame) { this.g = null; this.setScene('lobby'); this.say('Connection lost. Returned to the lobby.'); }
+    else if (this.scene === 'matching' || this.scene === 'waiting' || this.scene === 'join') { this.setScene('lobby'); this.say('Cannot connect to the online server'); }
   };
   P.applyLang = function () { if (typeof document !== 'undefined') { document.title = T('cbox') + ' - ' + T(TAGLINE); document.documentElement.lang = I18n.lang === 'zh' ? 'zh-CN' : 'en'; } };
   P.toggleLang = function () { I18n.setLang(I18n.lang === 'zh' ? 'en' : 'zh'); this.applyLang(); this.dirty = true; };

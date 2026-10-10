@@ -3,7 +3,11 @@
    t(str, a0, a1...) : looks up str (a template such as "Call {0}") in the dictionary when the language is zh, then fills {0},{1}...
    Dynamic strings produced by the rule engines (results, error messages) are translated by the pattern rules below. */
 (function () {
-  var ZH = {
+ var ZH = {
+ "Server waking up, please wait...": "服务器唤醒中，请稍候…",
+ "The free server sleeps when idle; this can take up to a minute.": "免费服务器闲置会休眠，唤醒最多需要约一分钟。",
+ "Reconnecting...": "正在重新连接…",
+ "Connection lost. Returned to the lobby.": "连接已断开，已返回大厅。",
  " (topped up to 1000)": "(已补助至 1000)",
  " (you)": "(你)",
  " beans": " 豆",

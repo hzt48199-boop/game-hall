@@ -8,7 +8,7 @@
     function open() {
       if (sock) return;
       var my = ++gen, url = typeof opts.url === 'function' ? opts.url() : opts.url;
-      function onOpen() { if (my !== gen) return; N.connected = true; retry = 0; sendRaw(JSON.stringify({ t: 'hello', token: N.token, name: N.name })); hb = setInterval(function () { if (N.connected) sendRaw(JSON.stringify({ t: 'ping' })); }, 20000); status('open'); }
+      function onOpen() { if (my !== gen) return; N.connected = true; retry = 0; N.attempt = 0; sendRaw(JSON.stringify({ t: 'hello', token: N.token, name: N.name })); hb = setInterval(function () { if (N.connected) sendRaw(JSON.stringify({ t: 'ping' })); }, 20000); status('open'); }
       function onMsg(data) {
         if (my !== gen) return; var m; try { m = JSON.parse(data); } catch (e) { return; }
         if (m.t === 'welcome') { N.token = m.token; N.name = m.name; opts.storage.set('gh_token', m.token); opts.storage.set('gh_name', m.name); N.ready = true; status('ready'); }
@@ -16,7 +16,7 @@
       }
       function onClose() {
         if (my !== gen) return; sock = null; N.connected = false; N.ready = false; clearInterval(hb); status('closed');
-        if (N.wanted) { retry++; timer = setTimeout(open, Math.min(8000, 800 * retry)); }
+        if (N.wanted) { retry++; N.attempt = retry; if (retry > (opts.maxRetry || 8)) { N.wanted = false; status('failed'); return; } status('retrying'); var d = Math.min(15000, 800 * Math.pow(2, retry - 1)); timer = setTimeout(open, d + Math.floor(Math.random() * 300)); }
       }
       try {
         if (hasWx) {
@@ -30,8 +30,8 @@
         }
       } catch (e) { sock = null; status('closed'); if (N.wanted) timer = setTimeout(open, 3000); }
     }
-    N.start = function () { N.wanted = true; clearTimeout(timer); open(); };
-    N.stop = function () { N.wanted = false; clearTimeout(timer); clearInterval(hb); if (sock) { gen++; closeRaw(); sock = null; } N.connected = false; N.ready = false; };
+    N.start = function () { N.wanted = true; retry = 0; N.attempt = 0; clearTimeout(timer); open(); };
+    N.stop = function () { N.wanted = false; clearTimeout(timer); clearInterval(hb); if (sock) { gen++; closeRaw(); sock = null; } N.connected = false; N.ready = false; N.attempt = 0; };
     N.send = function (obj) { if (!N.ready) return false; try { sendRaw(JSON.stringify(obj)); return true; } catch (e) { return false; } };
     return N;
   }

@@ -11,6 +11,7 @@ var app = new App({
   canvas: canvas, ctx: ctx,
   getSize: function () { return { w: info.windowWidth, h: info.windowHeight }; },
   storage: { get: function (k) { try { return wx.getStorageSync(k) || null; } catch (e) { return null; } }, set: function (k, v) { try { wx.setStorageSync(k, v); } catch (e) { } } },
+  createImage: function () { return wx.createImage(); }, logoBase: 'images/',
   raf: function (f) { requestAnimationFrame(f); },
   serverUrl: function () { return CFG.serverUrl; }
 });

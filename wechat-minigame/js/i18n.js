@@ -429,6 +429,7 @@
     [/^Royal flush$/, function () { return '皇家同花顺'; }]
   ];
   ZH['Royal flush'] = '皇家同花顺'; ZH['High card'] = '单张'; ZH['Pair'] = '对子'; ZH['Straight'] = '顺子'; ZH['Flush'] = '金花'; ZH['Straight flush'] = '同花顺'; ZH['Three of a kind'] = '豹子';
+  ZH['All'] = '全部'; ZH['Board'] = '棋类'; ZH['Cards'] = '牌类'; ZH['vs AI'] = '人机'; ZH['Friends'] = '好友房'; ZH['Play Now'] = '开始玩'; ZH['Free to play'] = '免费游玩';
   I.t = function (s) {
     if (s === undefined || s === null) return '';
     s = String(s); var out = s, i;

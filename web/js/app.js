@@ -14,14 +14,14 @@
   var TAGLINE = 'Open Charity Box. Open a world of compassion.';
   function tn(k) { return T(Mj.KN[k]); }
   var GAMES = [
-    { id: 'holdem', name: "Texas Hold'em", desc: 'Blinds, betting rounds, side pots - virtual chips', color: '#1b5e3a', icon: 'A\u2660K\u2665', multi: true, seats: 6, unit: 1, holdem: true, cap: true, isNew: true },
-    { id: 'chess', name: 'International Chess', desc: 'Castling, en passant, checkmate', color: '#3e2f6b', icon: '\u265e\u265a', isNew: true },
-    { id: 'gomoku', name: 'Gomoku', desc: 'Black vs white - first to five in a row wins', color: '#37474f', icon: '\u25cf\u25cb' },
-    { id: 'xiangqi', name: 'Chinese Chess', desc: 'Xiangqi - the generals face off', color: '#8d3b2a', icon: 'XQ' },
-    { id: 'luzhanqi', name: 'Luzhanqi', desc: 'Army Chess - hidden pieces, capture the flag', color: '#2e5d34', icon: '\u2691' },
-    { id: 'doudizhu', name: 'Dou Dizhu', desc: '3 players - bid to be the landlord, bombs and rockets', color: '#7b3f00', icon: '\u2660\u2665', multi: true, seats: 3, unit: 100 },
-    { id: 'mahjong', name: 'Mahjong', desc: '4 players - chow, pong, kong, win', color: '#1a5c5c', icon: 'MJ', multi: true, seats: 4, unit: 10 },
-    { id: 'zhajinhua', name: 'Zha Jin Hua', desc: 'Three-card poker - look, call, raise, compare', color: '#6a1b4d', icon: '3\u2666', multi: true, seats: 6, unit: 1, zjh: true, cap: true }
+    { id: 'holdem', name: "Texas Hold'em", desc: 'Blinds, betting rounds, side pots - virtual chips', color: '#12402a', icon: 'A\u2660K\u2665', cat: 'cards', multi: true, seats: 6, unit: 1, holdem: true, cap: true, isNew: true },
+    { id: 'chess', name: 'International Chess', desc: 'Castling, en passant, checkmate', color: '#2a2150', icon: '\u265e\u265a', cat: 'board', isNew: true },
+    { id: 'gomoku', name: 'Gomoku', desc: 'Black vs white - first to five in a row wins', color: '#202b30', icon: '\u25cf\u25cb', cat: 'board' },
+    { id: 'xiangqi', name: 'Chinese Chess', desc: 'Xiangqi - the generals face off', color: '#4a2219', icon: 'XQ', cat: 'board' },
+    { id: 'luzhanqi', name: 'Luzhanqi', desc: 'Army Chess - hidden pieces, capture the flag', color: '#1d3a21', icon: '\u2691', cat: 'board' },
+    { id: 'doudizhu', name: 'Dou Dizhu', desc: '3 players - bid to be the landlord, bombs and rockets', color: '#4a2a07', icon: '\u2660\u2665', cat: 'cards', multi: true, seats: 3, unit: 100 },
+    { id: 'mahjong', name: 'Mahjong', desc: '4 players - chow, pong, kong, win', color: '#0f3b3b', icon: 'MJ', cat: 'cards', multi: true, seats: 4, unit: 10 },
+    { id: 'zhajinhua', name: 'Zha Jin Hua', desc: 'Three-card poker - look, call, raise, compare', color: '#3f1530', icon: '3\u2666', cat: 'cards', multi: true, seats: 6, unit: 1, zjh: true, cap: true }
   ];
   var HARD_MS = { gomoku: 1500, xiangqi: 2000, luzhanqi: 1000, doudizhu: 400, mahjong: 300, zhajinhua: 200, chess: 2000, holdem: 250 };
   var BOT_NAMES = ['', 'Bot Ace', 'Bot Bao', 'Bot Max', 'Bot Rex', 'Bot Lily', 'Bot Sam'];
@@ -34,7 +34,7 @@
   function App(pf) {
     var self = this;
     this.pf = pf; this.ctx = pf.ctx; this.hits = []; this.dirty = true; this.scene = 'lobby'; this.cur = null; this.toast = null;
-    this.joinCode = ''; this.diff = { level: 2, seat: 1, n: 5 }; this.g = null; this.matchStart = 0; this.netState = 'closed';
+    this.scroll = 0; this.cat = 'all'; this.initLogo(); this.joinCode = ''; this.diff = { level: 2, seat: 1, n: 5 }; this.g = null; this.matchStart = 0; this.netState = 'closed';
     Sound.init(pf.storage);
     this.beans = parseInt(pf.storage.get('gh_beans'), 10); if (!(this.beans >= 0)) this.beans = 2000;
     this.net = Net.create({ url: pf.serverUrl, storage: pf.storage });
@@ -60,7 +60,7 @@
   P.initOverlay = function () {
     if (typeof document === 'undefined' || !document.body) return;
     var self = this, d = document.createElement('div');
-    d.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:99;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(15,40,30,.88);color:#fff;font:600 18px sans-serif;text-align:center;padding:20px';
+    d.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:99;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(5,9,6,.92);color:#fff;font:600 18px sans-serif;text-align:center;padding:20px';
     d.innerHTML = '<div id="gh-ov-t"></div><div id="gh-ov-s" style="font-weight:400;font-size:13px;opacity:.8;margin-top:8px"></div>';
     var b = document.createElement('div');
     b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:98;display:none;background:#ef6c00;color:#fff;font:600 14px sans-serif;text-align:center;padding:6px';
@@ -95,39 +95,72 @@
   P.say = function (text) { text = T(text); this.toast = { text: text, until: Date.now() + 2600 }; this.dirty = true; };
   P.tap = function (x, y) {
     Sound.unlock();
-    for (var i = this.hits.length - 1; i >= 0; i--) {
+    var lo = (this.scene === 'lobby' && y < 90) ? (this.barFrom || 0) : 0;
+    for (var i = this.hits.length - 1; i >= lo; i--) {
       var h = this.hits[i];
       if (x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) { if (h.click !== false) Sound.sfx('click'); h.cb(); this.dirty = true; return; }
     }
     if (this.scene === 'game' && !(this.cur && this.cur.multi)) this.boardTap(x, y);
   };
 
-  /* ---------- 绘图小工具 ---------- */
+  /* ---------- 绘图小工具(深色 + 荧光绿风格)---------- */
+  var GREEN = '#39e75f', DARK_FILL = '#0c130e', DARK_LINE = '#1c3a27', MUTED = '#8fa397';
+  var TINT = { '#ff8f00': 1, '#2e9d4f': 1 }, SOLID = { '#2e7d32': 1 }, DARKC = { '#546e7a': 1, '#455a64': 1, '#37674f': 1, '#757575': 1, '#37474f': 1, '#78909c': 1 };
+  function estW(str, size) { var w = 0; for (var i = 0; i < str.length; i++) w += str.charCodeAt(i) > 255 ? size : size * 0.58; return w; }
   P.btn = function (x, y, w, h, label, cb, o) {
-    o = o || {}; var c = this.ctx; label = T(label);
-    B.rrect(c, x, y, w, h, Math.min(14, h / 3)); c.fillStyle = o.disabled ? '#78909c' : (o.color || '#ff8f00'); c.fill();
-    if (o.stroke) { c.strokeStyle = o.stroke; c.lineWidth = 2; c.stroke(); }
-    B.text(c, label, x + w / 2, y + h / 2 + 1, o.size || Math.min(22, h * 0.42), o.fg || '#fff', true);
+    o = o || {}; var c = this.ctx; label = T(label); var col = o.color || '#ff8f00', fill, line = null, fg = o.fg, glow = false, r = o.radius !== undefined ? o.radius : h / 2;
+    if (o.disabled) { fill = '#0f1511'; line = '#1a2620'; fg = fg || '#55645a'; }
+    else if (SOLID[col]) { fill = GREEN; fg = fg || '#04210d'; glow = true; }
+    else if (TINT[col]) { fill = 'rgba(57,231,95,0.14)'; line = GREEN; fg = fg || GREEN; glow = true; }
+    else if (DARKC[col]) { fill = DARK_FILL; line = '#2a3d31'; fg = fg || '#c3d2c8'; }
+    else { fill = col; line = o.stroke || null; fg = fg || '#fff'; }
+    if (o.fill) fill = o.fill; if (o.line) line = o.line;
+    B.rrect(c, x, y, w, h, r); c.fillStyle = fill;
+    if (glow) { c.shadowColor = 'rgba(57,231,95,0.45)'; c.shadowBlur = 10; } c.fill(); c.shadowBlur = 0; c.shadowColor = 'rgba(0,0,0,0)';
+    if (line) { c.strokeStyle = line; c.lineWidth = 1.5; c.stroke(); }
+    B.text(c, label, x + w / 2, y + h / 2 + 1, o.size || Math.min(22, h * 0.42), fg, true, 'center', w - 10);
     if (!o.disabled) this.hits.push({ x: x, y: y, w: w, h: h, cb: cb, click: o.click, label: label });
   };
   var WEBSITE_URL = 'https://charitybox.netlify.app/';
-  P.brandLine = function (y, withName) { // cbox brand + tagline (shown in the lobby and on every game screen)
+  P.initLogo = function () {
+    var pf = this.pf, base = pf.logoBase || '', self = this; this.logos = {};
+    [96, 256].forEach(function (n) {
+      try {
+        var im = pf.createImage ? pf.createImage() : (typeof Image !== 'undefined' ? new Image() : null); if (!im) return;
+        im.onload = function () { self.dirty = true; }; im.src = base + 'logo' + n + '.png'; self.logos[n] = im;
+      } catch (e) { /* no image support */ }
+    });
+  };
+  P.drawLogo = function (cx, cy, r) { // circular golden badge; falls back to a gold disc while loading
+    var c = this.ctx, im = this.logos && (r > 26 ? (this.logos[256] || this.logos[96]) : (this.logos[96] || this.logos[256]));
+    c.save(); c.shadowColor = 'rgba(57,231,95,0.5)'; c.shadowBlur = 12; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fillStyle = '#c9a227'; c.fill(); c.restore();
+    var ready = im && (im.complete !== false) && (im.width > 0 || im.naturalWidth > 0);
+    if (ready) { try { c.save(); c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.clip(); c.drawImage(im, cx - r, cy - r, r * 2, r * 2); c.restore(); } catch (e) { try { c.restore(); } catch (e2) { } } }
+    c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.strokeStyle = 'rgba(57,231,95,0.55)'; c.lineWidth = 1.5; c.stroke();
+  };
+  P.brandLine = function (y, withName) { // cbox brand + tagline (shown on every game screen)
     var c = this.ctx, W = this.W, str = (withName ? T('cbox') + ' · ' : '') + T(TAGLINE);
-    B.text(c, str, W / 2, y, 10, '#ffd98a', false, 'center', W - 156);
+    B.text(c, str, W / 2, y, 10, '#7fcf95', false, 'center', W - 156);
   };
   P.header = function (title, back) {
-    var c = this.ctx, W = this.W, lobby = this.scene === 'lobby';
-    c.fillStyle = '#16372a'; c.fillRect(0, 0, W, 48);
-    if (lobby) { B.text(c, 'cbox', W / 2, 18, 24, '#ffeb99', true); this.brandLine(37, false); }
-    else { this.brandLine(11, true); B.text(c, title, W / 2, 31, 18, '#ffeb99', true, 'center', W - 156); }
-    if (back) this.btn(8, 8, 64, 32, 'Back', back, { color: '#455a64', size: 15 });
-    if (lobby) this.btn(8, 8, 104, 24, '← Back to website', function () { try { if (typeof window !== 'undefined' && window.location) window.location.href = WEBSITE_URL; } catch (e) { /* non-web platform */ } }, { color: 'rgba(255,255,255,0.14)', size: 12, fg: '#ffeb99' });
-    if (lobby) this.btn(W - 76, 8, 68, 32, I18n.lang === 'zh' ? 'English' : '中文', function () { this.toggleLang(); }.bind(this), { color: '#1565c0', size: 15, stroke: '#fff', label: I18n.lang === 'zh' ? 'English' : '中文' });
+    var c = this.ctx, W = this.W, lobby = this.scene === 'lobby', self = this;
+    c.fillStyle = '#060b08'; c.fillRect(0, 0, W, 90); c.fillStyle = '#16301f'; c.fillRect(0, 89, W, 1);
+    var pad = lobby ? Math.max(12, (W - Math.min(W - 24, 520)) / 2) : 8;
+    if (lobby) {
+      this.barFrom = this.hits.length; // taps inside the fixed bar only reach the bar's own buttons
+      this.drawLogo(pad + 20, 26, 20); B.text(c, 'cbox', pad + 48, 26, 22, GREEN, true, 'left');
+      var lang = I18n.lang === 'zh' ? 'English' : '中文', lw = 62, bw = I18n.lang === 'zh' ? 88 : 126;
+      this.btn(W - pad - lw, 10, lw, 32, lang, function () { this.toggleLang(); }.bind(this), { color: '#ff8f00', size: 14, label: lang });
+      this.btn(W - pad - lw - 6 - bw, 10, bw, 32, '← Back to website', function () { try { if (typeof window !== 'undefined' && window.location) window.location.href = WEBSITE_URL; } catch (e) { /* non-web platform */ } }, { color: '#546e7a', size: 12 });
+    } else {
+      this.brandLine(11, true); B.text(c, title, W / 2, 31, 18, '#eafff0', true, 'center', W - 156);
+      if (back) this.btn(8, 8, 64, 32, 'Back', back, { color: '#546e7a', size: 15 });
+    }
     // sound / music toggles (visible on every screen)
-    var tw = Math.min(150, (W - 16) / 2 - 4), y = 52;
-    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, 48, W, 40);
-    this.btn(W - 2 * tw - 12, y, tw, 32, (Sound.sfxOn ? 'Sound: On' : 'Sound: Off'), function () { Sound.toggleSfx(); }, { color: Sound.sfxOn ? '#2e9d4f' : '#757575', size: 16, click: false, stroke: '#fff' });
-    this.btn(W - tw - 6, y, tw, 32, (Sound.musicOn ? 'Music: On' : 'Music: Off'), function () { Sound.toggleMusic(); }, { color: Sound.musicOn ? '#2e9d4f' : '#757575', size: 16, click: false, stroke: '#fff' });
+    var tw = lobby ? 92 : Math.min(150, (W - 16) / 2 - 4), y = 52, th = lobby ? 30 : 32, rx = lobby ? W - pad : W - 6;
+    if (lobby) B.text(c, T('Happy Beans (virtual): {0}', this.beans), pad + 2, y + th / 2 + 1, 12, '#ffe58a', true, 'left', W - 2 * pad - 2 * tw - 14);
+    this.btn(rx - 2 * tw - 6, y, tw, th, (Sound.sfxOn ? 'Sound: On' : 'Sound: Off'), function () { Sound.toggleSfx(); }, { color: Sound.sfxOn ? '#2e9d4f' : '#757575', size: lobby ? 12 : 16, click: false });
+    this.btn(rx - tw, y, tw, th, (Sound.musicOn ? 'Music: On' : 'Music: Off'), function () { Sound.toggleMusic(); }, { color: Sound.musicOn ? '#2e9d4f' : '#757575', size: lobby ? 12 : 16, click: false });
   };
   P.frame = function () {
     var sz = this.pf.getSize(); if (sz.w !== this.W || sz.h !== this.H) { this.W = sz.w; this.H = sz.h; this.dirty = true; }
@@ -136,7 +169,7 @@
     if (this.toast && Date.now() > this.toast.until) { this.toast = null; this.dirty = true; }
     if (!this.dirty) return; this.dirty = false;
     var c = this.ctx; this.hits = [];
-    c.fillStyle = '#1f4d3a'; c.fillRect(0, 0, this.W, this.H);
+    c.fillStyle = this.scene === 'game' ? '#1f4d3a' : '#050806'; c.fillRect(0, 0, this.W, this.H);
     var fn = this['draw_' + this.scene]; if (fn) fn.call(this);
     if (this.toast) { var w = Math.min(this.W - 40, 360); B.rrect(c, (this.W - w) / 2, this.H - 120, w, 44, 10); c.fillStyle = 'rgba(0,0,0,0.8)'; c.fill(); B.text(c, this.toast.text, this.W / 2, this.H - 98, 16, '#fff', false); }
   };
@@ -158,21 +191,59 @@
   };
 
   /* ---------- 大厅 / 模式 ---------- */
+  var CARD_H = 84, CARD_GAP = 10, BANNER_H = 108, TABS = [['all', 'All'], ['board', 'Board'], ['cards', 'Cards']];
+  function tag(c, x, y, str, kind) { // small green badge; returns its width
+    var w = estW(str, 10) + 14; B.rrect(c, x, y, w, 17, 8.5);
+    c.fillStyle = kind === 'new' ? GREEN : 'rgba(57,231,95,0.10)'; c.fill(); c.strokeStyle = kind === 'new' ? GREEN : '#1f5a31'; c.lineWidth = 1; c.stroke();
+    B.text(c, str, x + w / 2, y + 9, 10, kind === 'new' ? '#04210d' : '#6fe58f', true); return w;
+  }
+  P.lobbyList = function () { var cat = this.cat; return GAMES.filter(function (g) { return cat === 'all' || g.cat === cat; }); };
+  P.lobbyMax = function () { var n = this.lobbyList().length; return Math.max(0, 90 + 14 + BANNER_H + 16 + 46 + 16 + n * (CARD_H + CARD_GAP) + 46 - this.H); };
+  P.scrollBy = function (dy) { if (this.scene !== 'lobby') return; this.scroll = Math.max(0, Math.min(this.lobbyMax(), this.scroll + dy)); this.dirty = true; };
   P.draw_lobby = function () {
-    var c = this.ctx, W = this.W; this.header('cbox', null);
-    B.text(c, 'For entertainment only - virtual chips, no cash value, not redeemable', W / 2, 102, 11, '#cfe8d5', false, 'center', W - 16);
-    B.text(c, T('Happy Beans (virtual points): {0}', this.beans), W / 2, 120, 13, '#ffeb99', true);
-    var cw = Math.min(W - 32, 420), x = (W - cw) / 2, y = 134, n = GAMES.length, gap = 8, h = Math.max(44, Math.min(92, (this.H - 144) / n - gap));
-    var self = this, big = h > 66;
-    GAMES.forEach(function (g) {
-      B.rrect(c, x, y, cw, h, 14); c.fillStyle = g.color; c.fill(); c.strokeStyle = g.isNew ? '#ffd54f' : 'rgba(255,255,255,0.35)'; c.lineWidth = g.isNew ? 3 : 2; c.stroke();
-      B.text(c, g.icon, x + 42, y + h / 2, big ? 28 : 21, '#ffeb99', true, 'center', 70);
-      B.text(c, g.name, x + 86, y + h / 2 - (big ? 13 : 9), big ? 22 : 18, '#fff', true, 'left', cw - 150);
-      B.text(c, g.desc, x + 86, y + h / 2 + (big ? 15 : 12), big ? 12 : 11, '#d7e7dc', false, 'left', cw - 96);
-      if (g.isNew) { B.rrect(c, x + cw - 56, y + 6, 46, 18, 9); c.fillStyle = '#ffd54f'; c.fill(); B.text(c, 'NEW', x + cw - 33, y + 15, 11, '#5d3a00', true); }
-      self.hits.push({ x: x, y: y, w: cw, h: h, label: T(g.name), cb: function () { self.cur = g; self.setScene('mode'); } });
-      y += h + gap;
+    var c = this.ctx, W = this.W, self = this, cw = Math.min(W - 24, 520), x = (W - cw) / 2;
+    this.scroll = Math.max(0, Math.min(this.lobbyMax(), this.scroll));
+    var y = 90 + 14 - this.scroll;
+    // banner card
+    B.rrect(c, x, y, cw, BANNER_H, 20); var gr = c.createLinearGradient(x, y, x + cw, y + BANNER_H); gr.addColorStop(0, '#0b1f12'); gr.addColorStop(1, '#14452a'); c.fillStyle = gr; c.fill(); c.strokeStyle = '#1f5a31'; c.lineWidth = 1; c.stroke();
+    c.save(); B.rrect(c, x, y, cw, BANNER_H, 20); c.clip();
+    c.beginPath(); c.arc(x + cw - 34, y + 30, 70, 0, Math.PI * 2); c.fillStyle = 'rgba(57,231,95,0.10)'; c.fill();
+    var bg = c.createLinearGradient(x, 0, x + cw, 0); bg.addColorStop(0, '#39e75f'); bg.addColorStop(1, '#a6ff7a'); c.fillStyle = bg; c.fillRect(x, y + BANNER_H - 7, cw, 7);
+    c.restore();
+    this.drawLogo(x + cw - 42, y + 36, 24);
+    tag(c, x + 16, y + 14, T('Free to play'), 'new');
+    B.text(c, T('cbox') + ' · Charity Box', x + 16, y + 48, 12, '#7fcf95', false, 'left', cw - 100);
+    B.text(c, T(TAGLINE), x + 16, y + 74, 16, '#fff', true, 'left', cw - 32);
+    y += BANNER_H + 16;
+    // category tab pill bar
+    B.rrect(c, x, y, cw, 46, 23); c.fillStyle = '#0a100c'; c.fill(); c.strokeStyle = '#1c3a27'; c.lineWidth = 1.5; c.stroke();
+    var tw = (cw - 8) / TABS.length;
+    TABS.forEach(function (t, i) {
+      var on = self.cat === t[0], tx = x + 4 + i * tw;
+      if (on) { B.rrect(c, tx, y + 4, tw, 38, 19); c.fillStyle = 'rgba(57,231,95,0.15)'; c.shadowColor = 'rgba(57,231,95,0.4)'; c.shadowBlur = 8; c.fill(); c.shadowBlur = 0; c.strokeStyle = GREEN; c.lineWidth = 1.5; c.stroke(); }
+      B.text(c, t[1], tx + tw / 2, y + 24, 15, on ? GREEN : MUTED, true);
+      self.hits.push({ x: tx, y: y + 4, w: tw, h: 38, label: T(t[1]), cb: function () { self.cat = t[0]; self.scroll = 0; } });
     });
+    y += 46 + 16;
+    // game cards
+    this.lobbyList().forEach(function (g) {
+      B.rrect(c, x, y, cw, CARD_H, 18); c.fillStyle = '#0a110c'; c.fill(); c.strokeStyle = g.isNew ? '#2c7a43' : '#1a2e21'; c.lineWidth = 1.5; c.stroke();
+      B.rrect(c, x + 12, y + 12, 60, 60, 14); c.fillStyle = g.color; c.fill(); c.strokeStyle = '#2a6b3d'; c.lineWidth = 1; c.stroke();
+      B.text(c, g.icon, x + 42, y + 42, g.icon.length > 2 ? 18 : 24, '#e9ffe9', true, 'center', 52);
+      var bw = 76, tx = x + 84, nameW = cw - 84 - bw - 22;
+      B.text(c, g.name, tx, y + 24, 17, '#fff', true, 'left', nameW);
+      var gx = tx, ty = y + 42;
+      if (g.isNew) gx += tag(c, gx, ty, T('NEW'), 'new') + 4;
+      gx += tag(c, gx, ty, T(g.cat === 'cards' ? 'Cards' : 'Board')) + 4;
+      gx += tag(c, gx, ty, T('vs AI')) + 4;
+      tag(c, gx, ty, T('Friends'));
+      if (cw >= 440) B.text(c, g.desc, tx, y + 71, 11, '#7f9486', false, 'left', nameW);
+      self.hits.push({ x: x, y: y, w: cw, h: CARD_H, label: T(g.name), cb: function () { self.cur = g; self.setScene('mode'); } });
+      self.btn(x + cw - bw - 12, y + (CARD_H - 34) / 2, bw, 34, 'Play Now', function () { self.cur = g; self.setScene('mode'); }, { color: '#2e7d32', size: 13 });
+      y += CARD_H + CARD_GAP;
+    });
+    B.text(c, 'For entertainment only - virtual chips, no cash value, not redeemable', W / 2, y + 14, 11, '#6f8577', false, 'center', W - 24);
+    this.header('cbox', null); // drawn last so scrolled content slides underneath the fixed bar
   };
   P.draw_mode = function () {
     var c = this.ctx, W = this.W, g = this.cur, self = this; this.header(g.name, function () { self.setScene('lobby'); });
@@ -405,7 +476,7 @@
     B[g.game].draw(c, this.boardRect(), dg);
     // 底部状态
     var y = H - 112; c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, y, W, 112);
-    var line = this.statusText(); B.text(c, line, W / 2, y + 20, 17, '#ffeb99', true, 'center', W - 12);
+    var line = this.statusText(); B.text(c, line, W / 2, y + 20, 17, '#eafff0', true, 'center', W - 12);
     var sub = this.subText(); if (sub) B.text(c, sub, W / 2, y + 44, 13, '#cfe8d5', false, 'center', W - 12);
     if (g.game === 'luzhanqi' && g.setup && s.phase === 'setup') {
       var bw = Math.min(150, W / 2 - 14);
@@ -525,7 +596,7 @@
     var rect = this.boardRect();
     CB[g.game].draw(c, rect, g, this);
     var y = H - 112; c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, y, W, 112);
-    B.text(c, this.multiStatus(), W / 2, y + 20, 16, '#ffeb99', true, 'center', W - 12);
+    B.text(c, this.multiStatus(), W / 2, y + 20, 16, '#eafff0', true, 'center', W - 12);
     var sub = this.multiSub(); if (sub) B.text(c, sub, W / 2, y + 44, 13, '#cfe8d5', false, 'center', W - 12);
     var mine = g.mode === 'online' ? g.players && g.players[g.seat - 1] : null, autoOn = g.mode === 'ai' ? g.auto : !!(mine && mine.auto);
     if (!s.over) this.btn(W / 2 - 60, y + 62, 120, 38, autoOn ? 'Cancel Auto-play' : 'Auto-play', function () {

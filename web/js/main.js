@@ -15,7 +15,21 @@
     return 'ws://' + (location.hostname || 'localhost') + ':8081';
   }
   var app = new GH.AppMod.App({ canvas: canvas, ctx: ctx, getSize: function () { return size; }, storage: storage, raf: function (f) { requestAnimationFrame(f); }, serverUrl: serverUrl });
-  canvas.addEventListener('pointerdown', function (e) { var r = canvas.getBoundingClientRect(); app.tap(e.clientX - r.left, e.clientY - r.top); e.preventDefault(); });
+  // lobby: drag / wheel scrolls the list, a short press taps (tap fires on release); other screens tap immediately
+  var drag = null;
+  canvas.addEventListener('pointerdown', function (e) {
+    var r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; e.preventDefault();
+    if (app.scene === 'lobby') { drag = { x: x, y: y, ly: y, moved: false }; try { canvas.setPointerCapture(e.pointerId); } catch (er) { } } else app.tap(x, y);
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!drag) return; var r = canvas.getBoundingClientRect(), y = e.clientY - r.top;
+    if (!drag.moved && Math.abs(y - drag.y) > 8) drag.moved = true;
+    if (drag.moved) { app.scrollBy(drag.ly - y); drag.ly = y; }
+  });
+  function endDrag(e, cancel) { if (!drag) return; var d = drag; drag = null; if (!d.moved && !cancel) app.tap(d.x, d.y); }
+  canvas.addEventListener('pointerup', function (e) { endDrag(e, false); });
+  canvas.addEventListener('pointercancel', function (e) { endDrag(e, true); });
+  canvas.addEventListener('wheel', function (e) { app.scrollBy(e.deltaY); e.preventDefault(); }, { passive: false });
   // iOS Safari: 阻止滚动/缩放/橡皮筋; 音频需在 touchend/click 手势内解锁
   ['touchmove', 'gesturestart', 'gesturechange', 'gestureend'].forEach(function (n) { document.addEventListener(n, function (e) { e.preventDefault(); }, { passive: false }); });
   document.addEventListener('contextmenu', function (e) { e.preventDefault(); });

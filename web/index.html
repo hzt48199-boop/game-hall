@@ -60,12 +60,20 @@
 </div>
 <script>
 (function(){
-  var t=document.getElementById('aads-toggle'),b=document.getElementById('aads-adbox'),open=true;
-  t.onclick=function(){
-    open=!open;
+  var t=document.getElementById('aads-toggle'),b=document.getElementById('aads-adbox'),bn=document.getElementById('aads-banner'),open=true,manual=false,lastGame=null;
+  function apply(){
     b.style.display=open?'block':'none';
-    t.textContent=open?'Hide ▲':'Show ▼';
-  };
+    t.textContent=open?'Hide \u25B2':'Show \u25BC';
+    window.dispatchEvent(new Event('resize')); /* canvas re-fits above the banner */
+  }
+  t.onclick=function(){ open=!open; manual=true; apply(); };
+  /* Banner stays expanded in the lobby/menus; auto-collapsed during game tables and the watch-ad overlay so it never covers game buttons. Player can still tap Show. */
+  setInterval(function(){
+    var a=window.__app; if(!a) return;
+    var inGame=(a.scene==='game'||a.scene==='ad');
+    if(inGame!==lastGame){ lastGame=inGame; manual=false; var want=!inGame; if(want!==open){ open=want; apply(); } }
+  },250);
+  if(window.ResizeObserver) new ResizeObserver(function(){ window.dispatchEvent(new Event('resize')); }).observe(bn);
 })();
 </script>
 <!-- ===== A-Ads banner end ===== -->

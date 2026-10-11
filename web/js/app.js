@@ -688,9 +688,13 @@
   P.draw_multi = function () {
     var c = this.ctx, W = this.W, H = this.H, g = this.g, self = this, s = g.vs, info = this.gameInfo(g.game);
     this.header(T(info.name) + (g.mode === 'ai' ? T(' · vs Computer ({0})', T(LEVELS[g.level - 1])) : T(' · Room {0}', g.code)), function () { self.leaveGame(); });
+    // wide screens: lay the card table out in a centred phone-sized column instead of stretching tiny cards across the whole window
+    var full = W, ox = 0, hit0 = this.hits.length, y = H - 112;
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, y, full, 112);
+    if (W > 720 && g.game !== 'mahjong') { var colW = 600; ox = Math.round((W - colW) / 2); W = colW; c.save(); c.translate(ox, 0); this.W = colW; }
+    this.ox = ox;
     var rect = this.boardRect();
     CB[g.game].draw(c, rect, g, this);
-    var y = H - 112; c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, y, W, 112);
     B.text(c, this.multiStatus(), W / 2, y + 20, 16, '#eafff0', true, 'center', W - 12);
     var sub = this.multiSub(); if (sub) B.text(c, sub, W / 2, y + 44, 13, '#cfe8d5', false, 'center', W - 12);
     var mine = g.mode === 'online' ? g.players && g.players[g.seat - 1] : null, autoOn = g.mode === 'ai' ? g.auto : !!(mine && mine.auto);
@@ -702,7 +706,9 @@
     else if (g.game === 'holdem') { if (!s.over && !autoOn) this.holdemButtons(rect); }
     else if (!s.over && s.turn === g.seat && !autoOn) this.multiButtons(rect);
     if (s.over) this.multiOverlay();
-    if (g.mode === 'online' && this.netState !== 'ready') { c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(0, 90, W, 28); B.text(c, 'Connection lost, reconnecting…', W / 2, 104, 15, '#ffcc80'); }
+    if (g.mode === 'online' && this.netState !== 'ready') { c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(-ox, 90, W + 2 * ox, 28); B.text(c, 'Connection lost, reconnecting…', W / 2, 104, 15, '#ffcc80'); }
+    if (ox) { c.restore(); this.W = full; for (var i = hit0; i < this.hits.length; i++) this.hits[i].x += ox; }
+    this.ox = 0;
   };
   P.multiButtons = function (rect) {
     var g = this.g, s = g.vs, W = this.W, self = this, bw, y, x0, list = [];
@@ -822,6 +828,7 @@
   function wrap(ctx, str, maxW, size) { ctx.font = size + 'px sans-serif'; var out = [], cur = '', toks = str.split(/(?<=[\s,，。;；-])|(?=[\u3000-\u9fff])/); toks.forEach(function (t) { if (cur && ctx.measureText(cur + t).width > maxW) { out.push(cur.trim()); cur = t; } else cur += t; }); if (cur) out.push(cur.trim()); return out; }
   P.multiOverlay = function () {
     var c = this.ctx, W = this.W, H = this.H, g = this.g, self = this, s = g.vs, info = this.gameInfo(g.game);
+    c.fillStyle = 'rgba(0,0,0,0.5)'; c.fillRect(-(this.ox || 0), 90, W + 2 * (this.ox || 0), H - 90); // dim the table so cards / seats peeking around the popup do not distract
     var w = Math.min(W - 24, 350), h = 330 + Math.max(0, (s.n || 0) - 4) * 24, x = (W - w) / 2, y = Math.max(96, (H - h) / 2 - 30);
     B.rrect(c, x, y, w, h, 16); c.fillStyle = 'rgba(10,25,18,0.95)'; c.fill(); c.strokeStyle = '#ffeb99'; c.lineWidth = 2; c.stroke();
     var won = s.winners && s.winners.indexOf(g.seat) >= 0, none = !(s.winners && s.winners.length);

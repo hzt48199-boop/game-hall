@@ -23,6 +23,8 @@
   'Please watch the full ad first': '请先看完整个广告',
   'Ad was not completed, no chips granted': '广告未看完，未发放筹码',
   '← Back to website': '← 返回官网',
+  'Follow us on X': '关注我们的推特',
+  'Link copied': '链接已复制',
  "Server waking up, please wait...": "服务器唤醒中，请稍候…",
  "The free server sleeps when idle; this can take up to a minute.": "免费服务器闲置会休眠，唤醒最多需要约一分钟。",
  "Reconnecting...": "正在重新连接…",

@@ -124,7 +124,7 @@
     B.text(c, label, x + w / 2, y + h / 2 + 1, o.size || Math.min(22, h * 0.42), fg, true, 'center', w - 10);
     if (!o.disabled) this.hits.push({ x: x, y: y, w: w, h: h, cb: cb, click: o.click, label: label });
   };
-  var WEBSITE_URL = 'https://charitybox.netlify.app/';
+  var WEBSITE_URL = 'https://charitybox.netlify.app/', X_URL = 'https://x.com/CharityBoxCBOX';
   P.initLogo = function () {
     var pf = this.pf, base = pf.logoBase || '', self = this; this.logos = {};
     [96, 256].forEach(function (n) {
@@ -202,7 +202,13 @@
   }
   P.lobbyList = function () { var cat = this.cat; return GAMES.filter(function (g) { return cat === 'all' || g.cat === cat; }); };
   function adH(cw) { return cw < 440 ? AD_H2 : AD_H; }
-  P.lobbyMax = function () { var n = this.lobbyList().length; return Math.max(0, 90 + 14 + BANNER_H + 16 + 46 + 16 + n * (CARD_H + CARD_GAP) + 46 + adH(Math.min(this.W - 24, 520)) + 12 - this.H); };
+  P.openX = function () {
+    try {
+      if (typeof window !== 'undefined' && window.open) { window.open(X_URL, '_blank', 'noopener'); return; }
+      if (typeof wx !== 'undefined' && wx.setClipboardData) { wx.setClipboardData({ data: X_URL, success: function () { } }); this.say('Link copied'); }
+    } catch (e) { /* unsupported platform: skip safely */ }
+  };
+  P.lobbyMax = function () { var n = this.lobbyList().length; return Math.max(0, 90 + 14 + BANNER_H + 12 + 44 + 4 + 46 + 16 + n * (CARD_H + CARD_GAP) + 46 + adH(Math.min(this.W - 24, 520)) + 12 - this.H); };
   P.scrollBy = function (dy) { if (this.scene !== 'lobby') return; this.scroll = Math.max(0, Math.min(this.lobbyMax(), this.scroll + dy)); this.dirty = true; };
   P.draw_lobby = function () {
     var c = this.ctx, W = this.W, self = this, cw = Math.min(W - 24, 520), x = (W - cw) / 2;
@@ -219,6 +225,7 @@
     B.text(c, T('cbox') + ' · Charity Box', x + 16, y + 48, 12, '#7fcf95', false, 'left', cw - 100);
     B.text(c, T(TAGLINE), x + 16, y + 74, 16, '#fff', true, 'left', cw - 32);
     y += BANNER_H + 12;
+    this.btn(x, y, cw, 34, 'Follow us on X', function () { self.openX(); }, { color: '#546e7a', size: 14 }); y += 44;
     this.drawAdRow(x, y, cw); y += adH(cw) + 12;
     // category tab pill bar
     B.rrect(c, x, y, cw, 46, 23); c.fillStyle = '#0a100c'; c.fill(); c.strokeStyle = '#1c3a27'; c.lineWidth = 1.5; c.stroke();

@@ -177,6 +177,7 @@
  "Flush": "金花",
  "Fold": "弃牌",
  "Folded": "已弃牌",
+ "For entertainment only. Gambling is strictly prohibited. All ad revenue is paid directly to the cbox charity fund account.": "娱乐为主，严禁赌博，所有广告收益均自动打入cbox慈善基金账户。",
  "For entertainment only - virtual chips, no cash value, not redeemable": "仅供娱乐 · 虚拟筹码,无现金价值,不可兑换",
  "For entertainment only, virtual chips, no cash value, not redeemable": "仅供娱乐,虚拟筹码,无现金价值,不可兑换",
  "Friend Room": "好友房",

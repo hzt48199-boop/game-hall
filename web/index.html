@@ -44,39 +44,6 @@
 <script src="js/cardboards.js"></script>
 <script src="js/app.js"></script>
 <script src="js/main.js"></script>
-<!-- ===== A-Ads banner start ===== -->
-<div id="aads-banner" style="position:fixed;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,.72);text-align:center;padding:4px 0 8px;">
-  <div style="font-size:10px;color:#8a8a8a;letter-spacing:3px;margin-bottom:3px;">Sponsored
-    <span id="aads-toggle" style="margin-left:12px;color:#5aa9ff;cursor:pointer;letter-spacing:0;">Hide ▲</span>
-  </div>
-  <div id="aads-adbox">
-    <!-- BEGIN AADS AD UNIT 2458126 -->
-    <div id="frame" style="width:100%;margin:auto;position:relative;z-index:99998;">
-      <iframe data-aa='2458126' src='//acceptable.a-ads.com/2458126/?size=Adaptive'
-        style='border:0;padding:0;width:70%;height:auto;overflow:hidden;display:block;margin:auto'></iframe>
-    </div>
-    <!-- END AADS AD UNIT 2458126 -->
-  </div>
-</div>
-<script>
-(function(){
-  var t=document.getElementById('aads-toggle'),b=document.getElementById('aads-adbox'),bn=document.getElementById('aads-banner'),open=true,manual=false,lastGame=null;
-  function apply(){
-    b.style.display=open?'block':'none';
-    t.textContent=open?'Hide \u25B2':'Show \u25BC';
-    window.dispatchEvent(new Event('resize')); /* canvas re-fits above the banner */
-  }
-  t.onclick=function(){ open=!open; manual=true; apply(); };
-  /* Banner stays expanded in the lobby/menus; auto-collapsed during game tables and the watch-ad overlay so it never covers game buttons. Player can still tap Show. */
-  setInterval(function(){
-    var a=window.__app; if(!a) return;
-    var inGame=(a.scene==='game'||a.scene==='ad');
-    if(inGame!==lastGame){ lastGame=inGame; manual=false; var want=!inGame; if(want!==open){ open=want; apply(); } }
-  },250);
-  if(window.ResizeObserver) new ResizeObserver(function(){ window.dispatchEvent(new Event('resize')); }).observe(bn);
-})();
-</script>
-<!-- ===== A-Ads banner end ===== -->
 <!-- A-Ads display ad shown inside the watch-ad overlay (same unit 2458126 / same iframe code as the banner; created only while the overlay is open) -->
 <div id="aads-overlay" style="position:fixed;display:none;z-index:99990;overflow:hidden;border-radius:6px;background:#05080a;">
   <!-- BEGIN AADS AD UNIT 2458126 -->

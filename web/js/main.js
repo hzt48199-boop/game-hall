@@ -1,7 +1,7 @@
 (function () {
   var canvas = document.getElementById('c'), ctx = canvas.getContext('2d'), size = { w: 0, h: 0 };
   function resize() {
-    var dpr = window.devicePixelRatio || 1; var bn = document.getElementById('aads-banner'), bh = bn ? Math.ceil(bn.getBoundingClientRect().height) : 0; size.w = window.innerWidth; size.h = Math.max(300, window.innerHeight - bh); /* canvas ends above the A-Ads banner */
+    var dpr = window.devicePixelRatio || 1; size.w = window.innerWidth; size.h = window.innerHeight;
     canvas.width = size.w * dpr; canvas.height = size.h * dpr; canvas.style.width = size.w + 'px'; canvas.style.height = size.h + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }

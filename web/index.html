@@ -77,6 +77,25 @@
 })();
 </script>
 <!-- ===== A-Ads banner end ===== -->
+<!-- A-Ads display ad shown inside the watch-ad overlay (same unit 2458126 / same iframe code as the banner; created only while the overlay is open) -->
+<div id="aads-overlay" style="position:fixed;display:none;z-index:99990;overflow:hidden;border-radius:6px;background:#05080a;">
+  <!-- BEGIN AADS AD UNIT 2458126 -->
+  <div id="aads-ov-frame" style="width:100%;height:100%;margin:auto;position:relative;"></div>
+  <!-- END AADS AD UNIT 2458126 -->
+</div>
+<script>
+(function(){
+  var box=document.getElementById('aads-overlay'),fr=document.getElementById('aads-ov-frame'),shown=false;
+  function show(r){
+    if(!shown){ shown=true; fr.innerHTML="<iframe data-aa='2458126' src='//acceptable.a-ads.com/2458126/?size=Adaptive' style='border:0;padding:0;width:100%;height:100%;overflow:hidden;display:block;margin:auto'></iframe>"; box.style.display='block'; }
+    var c=document.getElementById('c').getBoundingClientRect();
+    box.style.left=(c.left+r.x)+'px'; box.style.top=(c.top+r.y)+'px'; box.style.width=r.w+'px'; box.style.height=r.h+'px';
+  }
+  function hide(){ if(shown){ shown=false; box.style.display='none'; fr.innerHTML=''; } }
+  setInterval(function(){ var a=window.__app; if(a&&a.scene==='ad'&&a.adSlotRect) show(a.adSlotRect); else hide(); },120);
+})();
+</script>
+
 
 </body>
 </html>

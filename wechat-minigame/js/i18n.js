@@ -6,7 +6,7 @@
  var ZH = {
   'Watch ad · +{0} chips': '看广告领筹码 +{0}',
   'Claim +{0} chips': '领取 +{0} 筹码',
-  'Ad placeholder': '广告占位',
+  'Sponsored': '赞助广告',
   'Test ad slot - no real advertisement is shown.': '测试广告位 - 不会显示真实广告。',
   'Reward in {0}s': '{0} 秒后可领取奖励',
   'Thanks for watching!': '感谢观看!',

@@ -304,18 +304,19 @@
   P.draw_ad = function () {
     var c = this.ctx, W = this.W, H = this.H, self = this, left = Ads.left(), s = Ads.state, ms = s ? s.ms : 5000, done = !!s && left <= 0, amt = (this.adInfo && this.adInfo.amount) || 500;
     c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
-    var pw = Math.min(W - 32, 420), px = (W - pw) / 2, ph = 300, py = Math.max(20, (H - ph) / 2);
+    var pw = Math.min(W - 32, 420), px = (W - pw) / 2, ph = 440, py = Math.max(10, (H - ph) / 2);
     B.rrect(c, px, py, pw, ph, 22); c.fillStyle = '#0a110c'; c.fill(); c.strokeStyle = '#2a6b3d'; c.lineWidth = 2; c.stroke();
-    B.rrect(c, px + 14, py + 14, 110, 22, 11); c.fillStyle = '#3b3b1e'; c.fill();
-    B.text(c, T('Ad placeholder'), px + 69, py + 26, 12, '#ffe58a', true, 'center', 104);
-    B.text(c, T('Ad placeholder'), W / 2, py + 84, 26, '#eafff0', true, 'center', pw - 24);
-    B.text(c, T('Test ad slot - no real advertisement is shown.'), W / 2, py + 114, 12, MUTED, false, 'center', pw - 24);
-    var bx = px + 24, bwid = pw - 48, frac = Math.min(1, 1 - left / ms);
-    B.rrect(c, bx, py + 148, bwid, 10, 5); c.fillStyle = '#16241b'; c.fill();
-    if (frac > 0.02) { B.rrect(c, bx, py + 148, bwid * frac, 10, 5); c.fillStyle = GREEN; c.fill(); }
-    B.text(c, done ? T('Thanks for watching!') : T('Reward in {0}s', Math.ceil(left / 1000)), W / 2, py + 180, 15, done ? GREEN : '#cfe8d5', true, 'center', pw - 24);
-    this.btn(px + 30, py + 202, pw - 60, 44, T('Claim +{0} chips', amt), function () { Ads.finish(true); }, { color: '#2e7d32', size: 17, disabled: !done });
-    B.text(c, T('For entertainment only - virtual chips, no cash value, not redeemable'), W / 2, py + 274, 10, '#6f8577', false, 'center', pw - 20);
+    B.text(c, T('Sponsored'), W / 2, py + 24, 12, '#8a9a8f', false, 'center', pw - 24);
+    /* real A-Ads display ad: a DOM iframe is overlaid on this rect by web/index.html (see adSlotRect); reward never depends on it */
+    var sw = Math.min(300, pw - 16), sx = (W - sw) / 2, sy = py + 42;
+    B.rrect(c, sx, sy, sw, 250, 6); c.fillStyle = '#05080a'; c.fill();
+    this.adSlotRect = { x: sx, y: sy, w: sw, h: 250 };
+    var by = py + 308, bx = px + 24, bwid = pw - 48, frac = Math.min(1, 1 - left / ms);
+    B.rrect(c, bx, by, bwid, 10, 5); c.fillStyle = '#16241b'; c.fill();
+    if (frac > 0.02) { B.rrect(c, bx, by, bwid * frac, 10, 5); c.fillStyle = GREEN; c.fill(); }
+    B.text(c, done ? T('Thanks for watching!') : T('Reward in {0}s', Math.ceil(left / 1000)), W / 2, by + 32, 15, done ? GREEN : '#cfe8d5', true, 'center', pw - 24);
+    this.btn(px + 30, by + 54, pw - 60, 44, T('Claim +{0} chips', amt), function () { Ads.finish(true); }, { color: '#2e7d32', size: 17, disabled: !done });
+    B.text(c, T('For entertainment only - virtual chips, no cash value, not redeemable'), W / 2, by + 122, 10, '#6f8577', false, 'center', pw - 20);
   };
   P.wrapText = function (str, x, y, size, color, maxW) { // centered word/char wrap
     var c = this.ctx; str = T(str); c.font = size + 'px ' + FONT; var lines = [], cur = '', words = str.split(/(?<=[\s,，。;；])|(?=[\u3000-\u9fff])/);

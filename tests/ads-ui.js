@@ -13,7 +13,7 @@ setTimeout(async () => {
   const click = l => { frame(); const h = app.hits.filter(x => x.label === l)[0]; if (!h) throw new Error('no button ' + l + ' have ' + app.hits.map(x => x.label)); app.tap(h.x + h.w / 2, h.y + h.h / 2); frame(); };
   frame(); ok(app.hits.some(h => h.label === 'Watch ad · +500 chips'), 'lobby shows the Watch ad button');
   const b0 = app.beans; click('Watch ad · +500 chips'); await sleep(600); frame(); ok(app.scene === 'ad', 'ad overlay opened');
-  ok(texts.includes('Ad placeholder') && app.hits.every(h => h.label !== 'Claim +500 chips'), 'placeholder labelled; claim disabled during countdown');
+  ok(!!app.adSlotRect && app.adSlotRect.w <= 300 && texts.includes('Sponsored') && !texts.includes('Ad placeholder') && app.hits.every(h => h.label !== 'Claim +500 chips'), 'ad slot rect published; claim disabled during countdown');
   await sleep(5200); frame(); click('Claim +500 chips'); await sleep(600); frame();
   ok(app.scene === 'lobby' && app.beans === b0 + 500 && store.gh_beans === String(b0 + 500), 'chips granted +500 and persisted');
   ok(texts.some(t => /4 left today|Next ad in/.test(t)), 'remaining/cooldown shown: ' + texts.filter(t => /left today|Next ad/.test(t)).join('|'));
